@@ -125,42 +125,89 @@ def login(user, password):
 
 
 def parse_page(html):
-    """Return (headers, rows). Each row: dict of header -> text, plus _slug from the company link."""
+    """Return (headers, rows) from a screener results page.
+
+    Rows are found by their /company/ link, so this works even if the table's
+    class names or header labels change. row["Name"] is always the link text."""
     soup = BeautifulSoup(html, "html.parser")
-    table = soup.select_one("table.data-table") or soup.find("table")
-    if not table:
+    link_re = re.compile(r"^/company/")
+    tables = [t for t in soup.find_all("table") if t.find("a", href=link_re)]
+    if not tables:
         return [], []
+    table = max(tables, key=lambda t: len(t.find_all("a", href=link_re)))
     headers, rows = [], []
     for tr in table.find_all("tr"):
         ths = tr.find_all("th")
         if ths and not headers:
             headers = [" ".join(th.get_text(" ", strip=True).split()) for th in ths]
             continue
+        link = tr.find("a", href=link_re)
         tds = tr.find_all("td")
-        if not tds or not headers:
+        if not link or not tds:
             continue
         cells = [" ".join(td.get_text(" ", strip=True).split()) for td in tds]
-        row = dict(zip(headers, cells))
-        link = tr.find("a", href=re.compile(r"^/company/"))
-        if link:
-            m = re.match(r"^/company/([^/]+)/", link["href"])
-            row["_slug"] = m.group(1) if m else None
+        row = dict(zip(headers, cells)) if headers else {}
+        row = {("Name" if re.fullmatch(r"name\b.*", k, re.I) else k): v for k, v in row.items()}
+        row["Name"] = " ".join(link.get_text(" ", strip=True).split()) or row.get("Name", "")
+        m = re.match(r"^/company/([^/]+)/", link["href"])
+        row["_slug"] = m.group(1) if m else None
         rows.append(row)
     return headers, rows
 
 
+def save_debug_page(r, page):
+    """Save the results page (navigation, scripts and e-mail addresses removed) so the layout can be checked."""
+    soup = BeautifulSoup(r.text, "html.parser")
+    for tag in soup(["script", "style", "nav", "header", "footer", "svg", "form"]):
+        tag.decompose()
+    main = soup.find("main") or soup.body or soup
+    html = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[email]", str(main))
+    path = os.path.join(os.path.dirname(STATUS_PATH) or ".", f"debug_page{page}.html")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"<!-- url: {r.url} | status: {r.status_code} -->\n" + html[:400000])
+    text = " ".join(main.get_text(" ", strip=True).split())
+    log(f"Page {page} url: {r.url} | HTTP {r.status_code} | tables: {len(soup.find_all('table'))}")
+    preview = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[email]", text[:300])
+    log("Page text starts: " + preview)
+    log(f"Saved {path}")
+    return text
+
+
+def fetch_results(s, query, page, limit=True):
+    params = {"query": query, "page": page}
+    if limit:
+        params["limit"] = 50
+    r = s.get(f"{BASE}/screen/raw/", params=params, timeout=45)
+    if r.status_code == 429:
+        log("Rate limited by screener.in, waiting 20 s")
+        time.sleep(20)
+        r = s.get(f"{BASE}/screen/raw/", params=params, timeout=45)
+    return r
+
+
 def run_query(s, query, max_pages=60):
     all_rows, seen, headers = [], set(), []
+    use_limit = True
     for page in range(1, max_pages + 1):
-        r = s.get(f"{BASE}/screen/raw/", params={"query": query, "limit": 50, "page": page}, timeout=45)
-        if r.status_code == 429:
-            log("Rate limited by screener.in, waiting 20 s")
-            time.sleep(20)
-            r = s.get(f"{BASE}/screen/raw/", params={"query": query, "limit": 50, "page": page}, timeout=45)
+        r = fetch_results(s, query, page, use_limit)
         if "/login/" in r.url:
             fail("session_expired", "screener.in logged us out mid-run. Run the screen again.")
         if r.status_code >= 400:
             fail("query_failed", f"screener.in refused the query on page {page} (HTTP {r.status_code}).")
+        if page == 1 and not parse_page(r.text)[1]:
+            log("Page 1 had no stock rows; retrying without the page-size setting")
+            r2 = fetch_results(s, query, 1, limit=False)
+            if parse_page(r2.text)[1]:
+                r, use_limit = r2, False
+            else:
+                text = save_debug_page(r2, 1)
+                m = re.search(r"(\d[\d,]*)\s+results?\s+found", text, re.I)
+                if m and m.group(1).replace(",", "") == "0" or re.search(r"no (results|companies) found", text, re.I):
+                    fail("no_results", "The query ran but no stocks pass it today.")
+                err = re.search(r"(invalid[^.]{0,120}|did you mean[^.]{0,120}|error[^.]{0,120})", text, re.I)
+                fail("parse_failed", "Logged in, but no stocks could be read from the results page"
+                     + (f" (screener.in says: {err.group(1).strip()})" if err else "")
+                     + ". A copy of the page was saved as canslim/debug_page1.html.")
         h, rows = parse_page(r.text)
         headers = headers or h
         new = 0
@@ -302,3 +349,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
