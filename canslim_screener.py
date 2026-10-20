@@ -26,6 +26,10 @@ import os
 import re
 import sys
 import time
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
+from email.utils import parsedate_to_datetime
+from urllib.parse import quote_plus
 
 import requests
 from bs4 import BeautifulSoup
@@ -44,6 +48,16 @@ QUERY = (
     "Return on equity > 20 AND "
     "Return on capital employed > 15 AND "
     "Market Capitalization > 500"
+)
+
+# Always-true conditions: screener shows a column for every field used in a query,
+# so these bring promoter, pledge and FII/DII data into the results for free.
+HOLDING_FIELDS = (
+    " AND Promoter holding >= 0"
+    " AND Change in promoter holding > -100"
+    " AND Pledged percentage >= 0"
+    " AND Change in FII holding > -100"
+    " AND Change in DII holding > -100"
 )
 
 UPSTOX_NSE = "https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz"
@@ -65,6 +79,11 @@ COLS = [
     ("dma200", r"^200\s*dma"),
     ("ret6m", r"6\s*m(on)?th\s*return"),
     ("eps12m", r"^eps\s*12m"),
+    ("promoter", r"^(?!.*(chg|change)).*prom"),
+    ("prom_chg", r"(chg|change).*prom"),
+    ("pledge", r"pledg"),
+    ("fii_chg", r"(chg|change).*fii"),
+    ("dii_chg", r"(chg|change).*dii"),
 ]
 
 
@@ -258,6 +277,85 @@ def build_maps():
     return nse, bse
 
 
+# --------------------------------------------------------------------- news
+GNEWS = "https://news.google.com/rss/search?q={q}&hl=en-IN&gl=IN&ceid=IN:en"
+STOPWORDS = {"ltd", "limited", "india", "industries", "the", "and", "co", "corp", "company", "inds"}
+
+
+def clean_name(name):
+    """Screener shortens long names ("Sunlite Recycli."); drop the cut-off last word."""
+    words = name.split()
+    if len(words) > 1 and words[-1].endswith("."):
+        words = words[:-1]
+    return " ".join(w.strip(".") for w in words)
+
+
+def news_query(rec):
+    name = clean_name(rec["name"])
+    parts = [f'"{name}"']
+    sym = rec.get("nse") or ""
+    if re.fullmatch(r"[A-Z]{4,}", sym) and sym.lower() not in name.lower().replace(" ", ""):
+        parts.append(f'"{sym}"')
+    q = "(" + " OR ".join(parts) + ")"
+    if len(name.split()) == 1:
+        # one-word names ("BSE", "Tips") are common words: ask for stock-market context
+        q += " (shares OR stock OR results OR NSE)"
+    return q + " when:30d"
+
+
+def parse_rss(xml_text, rec, limit=8):
+    """Headlines that actually mention the company, newest first."""
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return []
+    name = clean_name(rec["name"]).lower()
+    keys = [w for w in re.findall(r"[a-z0-9]+", name) if w not in STOPWORDS and len(w) > 1][:2]
+    sym = (rec.get("nse") or "").lower()
+    items, seen = [], set()
+    for it in root.iter("item"):
+        title = (it.findtext("title") or "").strip()
+        src = (it.findtext("source") or "").strip()
+        if src and title.endswith(" - " + src):
+            title = title[: -len(src) - 3].strip()
+        low = title.lower()
+        if not title or low in seen:
+            continue
+        if keys and not (all(k in low for k in keys) or (sym and len(sym) > 3 and sym in low)):
+            continue  # skip look-alike companies
+        seen.add(low)
+        try:
+            when = parsedate_to_datetime(it.findtext("pubDate")).astimezone(IST).isoformat(timespec="minutes")
+        except Exception:
+            when = None
+        items.append({"t": title, "s": src, "d": when, "u": (it.findtext("link") or "").strip()})
+    items.sort(key=lambda x: x["d"] or "", reverse=True)
+    return items[:limit]
+
+
+def fetch_news(rec):
+    url = GNEWS.format(q=quote_plus(news_query(rec)))
+    for attempt in range(3):
+        try:
+            r = requests.get(url, timeout=20, headers={"User-Agent": UA})
+            if r.status_code == 429 or r.status_code >= 500:
+                time.sleep(3 * (attempt + 1))
+                continue
+            return parse_rss(r.text, rec) if r.ok else []
+        except requests.RequestException:
+            time.sleep(2)
+    return []
+
+
+def add_news(records, workers=6):
+    log(f"Fetching news headlines for {len(records)} stocks")
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for rec, items in zip(records, pool.map(fetch_news, records)):
+            rec["news"] = items
+    with_news = sum(1 for r in records if r["news"])
+    log(f"Headlines found for {with_news} of {len(records)} stocks")
+
+
 # ------------------------------------------------------------------ assemble
 def to_record(row, nse, bse):
     rec = {}
@@ -308,6 +406,7 @@ def main():
     ap.add_argument("--path", default="canslim/canslim_screen.json")
     ap.add_argument("--branch", default="main")
     ap.add_argument("--status", default=STATUS_PATH, help="where to write the run status file")
+    ap.add_argument("--no-news", action="store_true", help="skip the Google News headlines step")
     a = ap.parse_args()
     STATUS_PATH = a.status
 
@@ -316,7 +415,11 @@ def main():
         fail("no_secrets", "The SCREENER_USER / SCREENER_PASS secrets are missing. Add them in Settings → Secrets and variables → Actions.")
 
     s = login(user, pw)
-    headers, rows = run_query(s, a.query)
+    try:
+        headers, rows = run_query(s, a.query + HOLDING_FIELDS)
+    except SystemExit:
+        log("screener.in did not accept the holding fields; running the plain query")
+        headers, rows = run_query(s, a.query)
     if not rows:
         fail("no_results", "The query ran but returned no stocks today.")
     log(f"{len(rows)} stocks passed the screen")
@@ -327,6 +430,11 @@ def main():
         log(f"Upstox instrument masters failed ({e}); saving the list without instrument keys")
         nse, bse = {}, {}
     records = [to_record(r, nse, bse) for r in rows]
+    if not a.no_news:
+        try:
+            add_news(records)
+        except Exception as e:
+            log(f"News step failed ({e}); saving the list without headlines")
     missing = [r["name"] for r in records if not r["instrument_key"]]
     if missing:
         log(f"No Upstox key for {len(missing)}: {', '.join(missing[:10])}{' …' if len(missing) > 10 else ''}")
@@ -337,6 +445,7 @@ def main():
         "query": a.query,
         "columns": headers,
         "count": len(records),
+        "news_source": None if a.no_news else "Google News RSS, last 30 days",
         "rows": records,
     }
     data = json.dumps(payload, ensure_ascii=False, indent=1).encode()
@@ -354,3 +463,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+          
