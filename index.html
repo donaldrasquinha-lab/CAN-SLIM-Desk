@@ -156,10 +156,15 @@ footer{font-size:12.5px;color:var(--muted);max-width:70ch}
     <div class="step-head"><span class="step-num">2</span><h2 id="s2">Bring in the results</h2></div>
     <div class="settings">
       <div class="field" style="grid-column:1/-1"><label for="ghUrl">GitHub link to canslim_screen.json (written by canslim_screener.py)</label><input id="ghUrl" type="url" placeholder="https://github.com/you/repo/blob/main/canslim/canslim_screen.json"></div>
-      <div class="field"><label for="ghToken">GitHub token (private repo only)</label><input id="ghToken" type="password" autocomplete="off" placeholder="github_pat_…"></div>
-      <div class="field" style="justify-content:flex-end;gap:8px">
+      <div class="field"><label for="ghRepo">Repo (owner/name)</label><input id="ghRepo" type="text" autocomplete="off" placeholder="donaldrasquinha-lab/canslim"></div>
+      <div class="field"><label for="ghToken">GitHub token (needed for Run screen now)</label><input id="ghToken" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+      <div class="field" style="grid-column:1/-1;gap:8px">
         <label class="check"><input id="ghRemember" type="checkbox"> Remember token on this device</label>
-        <button class="primary" id="ghLoad" type="button">Load from GitHub</button>
+        <div class="row">
+          <button class="primary" id="ghRun" type="button">Run screen now</button>
+          <button id="ghLoad" type="button">Load last screen</button>
+        </div>
+        <p class="hint">Run screen now starts the screener on GitHub, waits about a minute for it to finish, then loads the new list.</p>
       </div>
     </div>
     <label class="hint" for="pasteBox">Or paste the copied screener table, or a CSV with a Name column</label>
@@ -497,7 +502,7 @@ async function research(rows, { fresh = false } = {}) {
 function progress(d, t, text) { $("#progWrap").hidden = false; $("#progBar").style.width = (t ? d / t * 100 : 0) + "%"; $("#progText").textContent = text; }
 function setRunning(on) {
   const busy = on || upRunning || running;
-  for (const id of ["#runAll", "#runPending", "#importPaste", "#clearAll", "#ghLoad", "#runUp"]) $(id).disabled = busy;
+  for (const id of ["#runAll", "#runPending", "#importPaste", "#clearAll", "#ghLoad", "#ghRun", "#runUp"]) $(id).disabled = busy;
   $("#stopUp").hidden = !upRunning; $("#stopBtn").hidden = !running;
   document.querySelectorAll(".reanalyse").forEach(b => b.disabled = busy);
 }
@@ -654,13 +659,13 @@ function ghRequest(url, token) {
 async function loadFromGitHub() {
   const url = $("#ghUrl").value.trim(), token = $("#ghToken").value.trim();
   if (!url) return showMsg($("#importMsg"), "Enter the GitHub link to canslim_screen.json.", true);
-  try { localStorage.setItem(GH_STORE, JSON.stringify({ url, token: $("#ghRemember").checked ? token : "" })); } catch {}
+  saveGh();
   const btn = $("#ghLoad"); btn.disabled = true; btn.textContent = "Loading…";
   try {
     const { u, headers } = ghRequest(url, token);
     const t = new AbortController(); const timer = setTimeout(() => t.abort(), 30000);
     const res = await fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), { headers, signal: t.signal, cache: "no-store" }).finally(() => clearTimeout(timer));
-    if (res.status === 404) throw new Error("File not found. For a private repo add a GitHub token.");
+    if (res.status === 404) throw new Error("No screen results yet. Tap Run screen now, or run the CAN SLIM screen workflow on GitHub, then load again.");
     if (res.status === 401 || res.status === 403) throw new Error("GitHub refused the token. It needs Contents: read on that repo.");
     if (!res.ok) throw new Error("GitHub returned " + res.status + ".");
     const { rows, generated } = rowsFromJson(await res.json());
@@ -669,6 +674,70 @@ async function loadFromGitHub() {
   } catch (e) {
     showMsg($("#importMsg"), e.name === "AbortError" ? "GitHub did not answer within 30 seconds." : (e.message || "Could not load from GitHub."), true);
   } finally { btn.disabled = false; btn.textContent = "Load from GitHub"; }
+}
+
+
+/* ---------- Run the screener on GitHub Actions ---------- */
+const WORKFLOW = "canslim-screen.yml", SCREEN_PATH = "canslim/canslim_screen.json";
+let ghBusy = false;
+function saveGh() { try { localStorage.setItem(GH_STORE, JSON.stringify({ url: $("#ghUrl").value.trim(), repo: $("#ghRepo").value.trim(), token: $("#ghRemember").checked ? $("#ghToken").value.trim() : "" })); } catch {} }
+function guessRepo() {
+  const m = $("#ghUrl").value.match(/(?:github\.com|raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)/);
+  if (m) return m[1] + "/" + m[2];
+  if (/\.github\.io$/i.test(location.hostname)) { const seg = location.pathname.split("/")[1]; if (seg && !/\.html?$/i.test(seg)) return location.hostname.split(".")[0] + "/" + seg; }
+  return "";
+}
+async function ghApi(path, token, opts = {}) {
+  const t = new AbortController(); const timer = setTimeout(() => t.abort(), 30000);
+  try {
+    return await fetch("https://api.github.com" + path, { ...opts, signal: t.signal, cache: "no-store",
+      headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", ...(opts.headers || {}) } });
+  } finally { clearTimeout(timer); }
+}
+function ghStatus(text, err, link) {
+  const el = $("#importMsg"); el.className = "msg" + (err ? " err" : ""); el.hidden = false; el.textContent = text;
+  if (link) { const a = document.createElement("a"); a.href = link; a.target = "_blank"; a.rel = "noopener"; a.textContent = " Open the run log ↗"; a.style.color = "inherit"; el.append(a); }
+}
+async function runScreenNow() {
+  if (ghBusy || running || upRunning) return;
+  const repo = ($("#ghRepo").value.trim() || guessRepo()).replace(/^https:\/\/github\.com\//, "").replace(/\/$/, "");
+  const token = $("#ghToken").value.trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { ghStatus("Enter the repo as owner/name, e.g. donaldrasquinha-lab/canslim.", true); $("#ghRepo").focus(); return; }
+  if (!token) { ghStatus("Run screen now needs a GitHub token with Actions: read and write and Contents: read on this repo.", true); $("#ghToken").focus(); return; }
+  $("#ghRepo").value = repo; saveGh();
+  ghBusy = true; const btn = $("#ghRun"); btn.disabled = true; btn.textContent = "Running…";
+  try {
+    const started = Date.now();
+    let res = await ghApi(`/repos/${repo}/actions/workflows/${WORKFLOW}/dispatches`, token, { method: "POST", body: JSON.stringify({ ref: "main" }) });
+    if (res.status === 401) throw new Error("GitHub rejected the token. Check it hasn't expired.");
+    if (res.status === 403) throw new Error("The token can't start workflows. Give it Actions: read and write on this repo.");
+    if (res.status === 404) throw new Error(`GitHub can't find .github/workflows/${WORKFLOW} in ${repo}, or the token has no access to that repo.`);
+    if (res.status === 422) throw new Error("The workflow can't be started by a button. Make sure it contains the workflow_dispatch line.");
+    if (!res.ok) throw new Error("GitHub returned " + res.status + " when starting the run.");
+    ghStatus("Screen started on GitHub. Waiting for it to begin…");
+    let run = null;
+    for (let i = 0; i < 100; i++) {           // up to ~10 minutes
+      await new Promise(r => setTimeout(r, 6000));
+      res = await ghApi(`/repos/${repo}/actions/workflows/${WORKFLOW}/runs?event=workflow_dispatch&per_page=5`, token);
+      if (!res.ok) continue;
+      const runs = (await res.json()).workflow_runs || [];
+      run = runs.find(r => Date.parse(r.created_at) >= started - 90000) || run;
+      if (!run) continue;
+      const secs = Math.round((Date.now() - started) / 1000);
+      if (run.status !== "completed") { ghStatus(`Screen ${run.status === "queued" ? "queued" : "running"} on GitHub… ${secs}s`, false, run.html_url); continue; }
+      if (run.conclusion !== "success") throw Object.assign(new Error(`The screen run ended with "${run.conclusion}".`), { link: run.html_url });
+      break;
+    }
+    if (!run || run.status !== "completed") throw Object.assign(new Error("The run is taking longer than 10 minutes. Check it on GitHub, then tap Load last screen."), { link: run?.html_url });
+    ghStatus("Screen finished. Loading the new list…");
+    res = await ghApi(`/repos/${repo}/contents/${SCREEN_PATH}?ref=main`, token, { headers: { Accept: "application/vnd.github.raw+json" } });
+    if (!res.ok) throw new Error(`The run finished but ${SCREEN_PATH} could not be read (${res.status}).`);
+    const { rows, generated } = rowsFromJson(await res.json());
+    setRows(rows);
+    ghStatus(`Loaded ${rows.length} stocks from the screen run at ${new Date(generated || Date.now()).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}.`);
+  } catch (e) {
+    ghStatus(e.name === "AbortError" ? "GitHub did not answer within 30 seconds." : (e.message || "Run screen now failed."), true, e.link);
+  } finally { ghBusy = false; btn.disabled = false; btn.textContent = "Run screen now"; }
 }
 
 /* ---------- Upstox: N, L, S price checks ---------- */
@@ -793,6 +862,8 @@ async function runPriceChecks() {
 }
 
 $("#ghLoad").onclick = loadFromGitHub;
+$("#ghRun").onclick = runScreenNow;
+$("#ghRepo").addEventListener("change", () => { try { const g = JSON.parse(localStorage.getItem(GH_STORE) || "{}"); g.repo = $("#ghRepo").value.trim(); localStorage.setItem(GH_STORE, JSON.stringify(g)); } catch {} });
 $("#runUp").onclick = runPriceChecks;
 $("#stopUp").onclick = () => upCtl?.abort();
 $("#upToken").addEventListener("change", saveUpToken);
@@ -802,6 +873,8 @@ try { const g = JSON.parse(localStorage.getItem(GH_STORE) || "{}"); if (g.url) $
 // Opened from GitHub Pages: the screen file sits in the same repo, so fill the link in and load it straight away.
 const onPages = /\.github\.io$/i.test(location.hostname);
 if (onPages && !$("#ghUrl").value) $("#ghUrl").value = new URL("canslim/canslim_screen.json", location.href).href;
+try { const g = JSON.parse(localStorage.getItem(GH_STORE) || "{}"); if (g.repo) $("#ghRepo").value = g.repo; } catch {}
+if (!$("#ghRepo").value) $("#ghRepo").value = guessRepo();
 try { const u = JSON.parse(localStorage.getItem(UP_SET) || "{}"); if (u.inst) $("#instUrl").value = u.inst; } catch {}
 
 /* settings (standalone mode) */
