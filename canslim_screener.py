@@ -67,6 +67,25 @@ def log(msg):
     print(f"[{dt.datetime.now(IST):%H:%M:%S}] {msg}", flush=True)
 
 
+STATUS_PATH = "canslim/screen_status.json"
+
+
+def write_status(ok, code, message, **extra):
+    """Small file the app reads to show why a run failed (or that it worked)."""
+    d = os.path.dirname(STATUS_PATH)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    with open(STATUS_PATH, "w", encoding="utf-8") as f:
+        json.dump({"ok": ok, "code": code, "message": message,
+                   "at": dt.datetime.now(IST).isoformat(timespec="seconds"), **extra}, f, indent=1)
+
+
+def fail(code, message):
+    log("ERROR: " + message)
+    write_status(False, code, message)
+    sys.exit(1)
+
+
 def num(v):
     try:
         return float(re.sub(r"[,₹%\s]", "", str(v)))
@@ -78,19 +97,29 @@ def num(v):
 def login(user, password):
     s = requests.Session()
     s.headers["User-Agent"] = UA
-    s.get(f"{BASE}/login/", timeout=30).raise_for_status()
+    try:
+        r0 = s.get(f"{BASE}/login/", timeout=30)
+    except requests.RequestException as e:
+        fail("unreachable", f"Could not reach screener.in from GitHub ({e.__class__.__name__}). Try again later.")
+    if r0.status_code in (403, 429, 503):
+        fail("blocked", f"screener.in blocked the request from GitHub's servers (HTTP {r0.status_code}).")
     token = s.cookies.get("csrftoken")
     if not token:
-        sys.exit("Could not get a CSRF token from screener.in.")
+        fail("blocked", "screener.in did not return its login form. It may be blocking GitHub's servers.")
     r = s.post(
         f"{BASE}/login/",
         data={"csrfmiddlewaretoken": token, "username": user, "password": password, "next": "/"},
         headers={"Referer": f"{BASE}/login/"},
         timeout=30,
     )
-    r.raise_for_status()
+    if r.status_code in (403, 429, 503):
+        fail("blocked", f"screener.in blocked the login from GitHub's servers (HTTP {r.status_code}).")
     if "sessionid" not in s.cookies:
-        sys.exit("screener.in login failed. Check SCREENER_USER and SCREENER_PASS.")
+        page = r.text.lower()
+        if "correct" in page or "errorlist" in page or "invalid" in page or "/login/" in r.url:
+            fail("wrong_password", "Wrong password for screener.in (or wrong email). "
+                 "Fix the SCREENER_USER / SCREENER_PASS secrets in the repo settings.")
+        fail("login_failed", f"screener.in login did not complete (HTTP {r.status_code}).")
     log("Logged in to screener.in")
     return s
 
@@ -128,9 +157,10 @@ def run_query(s, query, max_pages=60):
             log("Rate limited by screener.in, waiting 20 s")
             time.sleep(20)
             r = s.get(f"{BASE}/screen/raw/", params={"query": query, "limit": 50, "page": page}, timeout=45)
-        r.raise_for_status()
         if "/login/" in r.url:
-            sys.exit("screener.in sent us back to login. The session expired.")
+            fail("session_expired", "screener.in logged us out mid-run. Run the screen again.")
+        if r.status_code >= 400:
+            fail("query_failed", f"screener.in refused the query on page {page} (HTTP {r.status_code}).")
         h, rows = parse_page(r.text)
         headers = headers or h
         new = 0
@@ -217,6 +247,7 @@ def push_github(repo, path, branch, content_bytes, token):
 
 
 def main():
+    global STATUS_PATH
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default="canslim_screen.json")
     ap.add_argument("--query", default=QUERY)
@@ -224,19 +255,25 @@ def main():
     ap.add_argument("--repo", help="owner/name for --push")
     ap.add_argument("--path", default="canslim/canslim_screen.json")
     ap.add_argument("--branch", default="main")
+    ap.add_argument("--status", default=STATUS_PATH, help="where to write the run status file")
     a = ap.parse_args()
+    STATUS_PATH = a.status
 
     user, pw = os.environ.get("SCREENER_USER"), os.environ.get("SCREENER_PASS")
     if not user or not pw:
-        sys.exit("Set SCREENER_USER and SCREENER_PASS first.")
+        fail("no_secrets", "The SCREENER_USER / SCREENER_PASS secrets are missing. Add them in Settings → Secrets and variables → Actions.")
 
     s = login(user, pw)
     headers, rows = run_query(s, a.query)
     if not rows:
-        sys.exit("The query returned no stocks.")
+        fail("no_results", "The query ran but returned no stocks today.")
     log(f"{len(rows)} stocks passed the screen")
 
-    nse, bse = build_maps()
+    try:
+        nse, bse = build_maps()
+    except Exception as e:
+        log(f"Upstox instrument masters failed ({e}); saving the list without instrument keys")
+        nse, bse = {}, {}
     records = [to_record(r, nse, bse) for r in rows]
     missing = [r["name"] for r in records if not r["instrument_key"]]
     if missing:
@@ -254,6 +291,7 @@ def main():
     with open(a.out, "wb") as f:
         f.write(data)
     log(f"Wrote {a.out}")
+    write_status(True, "ok", f"{len(records)} stocks passed the screen.", count=len(records))
 
     if a.push:
         tok = os.environ.get("GITHUB_TOKEN")
