@@ -269,7 +269,7 @@ function save() {
 /* ---------- parsing ---------- */
 const num = v => { if (v == null) return null; const x = parseFloat(String(v).replace(/[,₹%\s]/g, "")); return isFinite(x) ? x : null; };
 const COLS = {
-  name: /^name$|company/i, nse: /nse/i, bse: /bse/i, industry: /industry|sector/i,
+  name: /^(name|company)$/i, nse: /nse/i, bse: /bse/i, industry: /industry|sector/i,
   price: /^cmp|current price/i, pe: /^p\/e|price to earning/i, mcap: /mar(ket)? ?cap/i,
   roe: /^roe|return on equity/i, roce: /^roce|return on capital/i,
   qp: /qtr profit var|quarterly profit growth/i, qs: /qtr sales var|quarterly sales growth/i
@@ -286,15 +286,15 @@ function splitLine(line, d) {
   out.push(cur.trim()); return out;
 }
 function rowsFromMatrix(m) {
-  const hi = m.findIndex(r => r.some(c => /^name$/i.test(String(c).trim())));
-  if (hi < 0) throw new Error("No Name column found. Copy the table including its header row.");
+  const hi = m.findIndex(r => r.some(c => /^(name|company)$/i.test(String(c).trim())));
+  if (hi < 0) throw new Error("No Company or Name column found. Copy the table including its header row.");
   const head = m[hi].map(c => String(c).trim());
   const idx = {};
   for (const [k, re] of Object.entries(COLS)) { const i = head.findIndex(h => re.test(h)); if (i >= 0) idx[k] = i; }
   const seen = new Set(), rows = [];
   for (const r of m.slice(hi + 1)) {
     const name = String(r[idx.name] ?? "").trim();
-    if (!name || /^name$/i.test(name) || /median|^s\.?no/i.test(name) || /^\d+$/.test(name)) continue;
+    if (!name || /^(name|company)$/i.test(name) || /median|^s\.?no/i.test(name) || /^\d+$/.test(name)) continue;
     const id = (String(r[idx.nse] ?? "").trim() || name).toUpperCase();
     if (seen.has(id)) continue; seen.add(id);
     const g = k => idx[k] != null ? r[idx[k]] : null;
