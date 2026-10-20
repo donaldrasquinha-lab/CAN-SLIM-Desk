@@ -250,12 +250,7 @@ Profit growth > 20 AND
 Sales growth > 20 AND
 Return on equity > 20 AND
 Return on capital employed > 15 AND
-Market Capitalization > 500 AND
-Promoter holding >= 0 AND
-Change in promoter holding > -100 AND
-Pledged percentage >= 0 AND
-Change in FII holding > -100 AND
-Change in DII holding > -100`;
+Market Capitalization > 500`;
 const STORE = "canslim-desk-v1";
 
 const $ = s => document.querySelector(s);
@@ -281,4 +276,7 @@ const COLS = {
   qp: /qtr profit var|quarterly profit growth/i, qs: /qtr sales var|quarterly sales growth/i,
   promoter: /^(?!.*(chg|change)).*prom/i, prom_chg: /(chg|change).*prom/i, pledge: /pledg/i, fii_chg: /(chg|change).*fii/i, dii_chg: /(chg|change).*dii/i
 };
-function spl
+function splitLine(line, d) {
+  if (d === "\t") return line.split("\t").map(s => s.trim());
+  const out = []; let cur = "", q = false;
+  for (let i = 0; i < line.length; 
