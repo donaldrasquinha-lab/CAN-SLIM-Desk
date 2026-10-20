@@ -656,6 +656,15 @@ function ghRequest(url, token) {
   const headers = token && u.startsWith("https://api.github.com/") ? { Authorization: "Bearer " + token, Accept: "application/vnd.github.raw+json" } : {};
   return { u, headers };
 }
+async function readStatus(jsonUrl, token) {
+  // screen_status.json sits next to canslim_screen.json and says why the last run failed.
+  try {
+    const { u, headers } = ghRequest(jsonUrl.replace(/canslim_screen\.json/i, "screen_status.json"), token);
+    if (u === jsonUrl && !/screen_status/.test(u)) return null;
+    const res = await fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), { headers, cache: "no-store" });
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
 async function loadFromGitHub() {
   const url = $("#ghUrl").value.trim(), token = $("#ghToken").value.trim();
   if (!url) return showMsg($("#importMsg"), "Enter the GitHub link to canslim_screen.json.", true);
@@ -665,12 +674,20 @@ async function loadFromGitHub() {
     const { u, headers } = ghRequest(url, token);
     const t = new AbortController(); const timer = setTimeout(() => t.abort(), 30000);
     const res = await fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), { headers, signal: t.signal, cache: "no-store" }).finally(() => clearTimeout(timer));
-    if (res.status === 404) throw new Error("No screen results yet. Tap Run screen now, or run the CAN SLIM screen workflow on GitHub, then load again.");
+    if (res.status === 404) {
+      const st = await readStatus(url, token);
+      if (st && st.ok === false) throw new Error("The screen run failed: " + st.message);
+      throw new Error("No screen results yet. Tap Run screen now, or run the CAN SLIM screen workflow on GitHub, then load again.");
+    }
     if (res.status === 401 || res.status === 403) throw new Error("GitHub refused the token. It needs Contents: read on that repo.");
     if (!res.ok) throw new Error("GitHub returned " + res.status + ".");
     const { rows, generated } = rowsFromJson(await res.json());
     setRows(rows);
-    if (generated) showMsg($("#importMsg"), `Loaded ${rows.length} stocks from the screen run at ${new Date(generated).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}.`);
+    const when = generated ? new Date(generated).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "an earlier run";
+    const st = await readStatus(url, token);
+    if (st && st.ok === false && (!generated || Date.parse(st.at) > Date.parse(generated)))
+      showMsg($("#importMsg"), `The latest screen run failed: ${st.message} Showing the previous list from ${when}.`, true);
+    else if (generated) showMsg($("#importMsg"), `Loaded ${rows.length} stocks from the screen run at ${when}.`);
   } catch (e) {
     showMsg($("#importMsg"), e.name === "AbortError" ? "GitHub did not answer within 30 seconds." : (e.message || "Could not load from GitHub."), true);
   } finally { btn.disabled = false; btn.textContent = "Load from GitHub"; }
@@ -725,7 +742,14 @@ async function runScreenNow() {
       if (!run) continue;
       const secs = Math.round((Date.now() - started) / 1000);
       if (run.status !== "completed") { ghStatus(`Screen ${run.status === "queued" ? "queued" : "running"} on GitHub… ${secs}s`, false, run.html_url); continue; }
-      if (run.conclusion !== "success") throw Object.assign(new Error(`The screen run ended with "${run.conclusion}".`), { link: run.html_url });
+      if (run.conclusion !== "success") {
+        let why = `The screen run ended with "${run.conclusion}".`;
+        try {
+          const sr = await ghApi(`/repos/${repo}/contents/canslim/screen_status.json?ref=main`, token, { headers: { Accept: "application/vnd.github.raw+json" } });
+          if (sr.ok) { const st = await sr.json(); if (st.ok === false && Date.parse(st.at) >= started - 120000) why = st.message; }
+        } catch {}
+        throw Object.assign(new Error(why), { link: run.html_url });
+      }
       break;
     }
     if (!run || run.status !== "completed") throw Object.assign(new Error("The run is taking longer than 10 minutes. Check it on GitHub, then tap Load last screen."), { link: run?.html_url });
