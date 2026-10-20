@@ -51,7 +51,7 @@ UPSTOX_BSE = "https://assets.upstox.com/market-quote/instruments/exchange/BSE.js
 
 # Screener column header -> field name used by CAN SLIM Desk
 COLS = [
-    ("name", r"^name$"),
+    ("name", r"^(name|company)$"),
     ("price", r"^cmp|current price"),
     ("pe", r"^p/e|price to earning"),
     ("mcap", r"mar(ket)? ?cap"),
@@ -60,6 +60,11 @@ COLS = [
     ("qp", r"qtr profit var|quarterly profit growth"),
     ("qs", r"qtr sales var|quarterly sales growth"),
     ("industry", r"industry|sector"),
+    ("hi52", r"52\s*w(eek)?\s*high"),
+    ("dma50", r"^50\s*dma"),
+    ("dma200", r"^200\s*dma"),
+    ("ret6m", r"6\s*m(on)?th\s*return"),
+    ("eps12m", r"^eps\s*12m"),
 ]
 
 
@@ -147,7 +152,7 @@ def parse_page(html):
             continue
         cells = [" ".join(td.get_text(" ", strip=True).split()) for td in tds]
         row = dict(zip(headers, cells)) if headers else {}
-        row = {("Name" if re.fullmatch(r"name\b.*", k, re.I) else k): v for k, v in row.items()}
+        row = {("Name" if re.match(r"(name|company)\b", k, re.I) else k): v for k, v in row.items()}
         row["Name"] = " ".join(link.get_text(" ", strip=True).split()) or row.get("Name", "")
         m = re.match(r"^/company/([^/]+)/", link["href"])
         row["_slug"] = m.group(1) if m else None
@@ -349,4 +354,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
