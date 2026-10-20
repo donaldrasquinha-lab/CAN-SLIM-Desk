@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CAN SLIM Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a research desk — screen → import → research, one column of stock tickets that stays readable on a phone */
+:root{
+  --bg:#EEF1F3; --surface:#FFFFFF; --sunk:#E3E8EC; --line:#CDD5DC;
+  --fg:#14202B; --muted:#5A6A78; --accent:#2747B8; --accent-ink:#FFFFFF; --accent-soft:#DCE3FA;
+  --good:#1B7A4B; --good-soft:#D7F0E2; --warn:#9A6200; --warn-soft:#F7E8C8; --bad:#B3261E; --bad-soft:#F8DAD7;
+  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F161D; --surface:#17212B; --sunk:#1E2A36; --line:#2C3A48;
+  --fg:#E4EBF1; --muted:#93A4B4; --accent:#8EA6FF; --accent-ink:#0F161D; --accent-soft:#25335E;
+  --good:#5DD39A; --good-soft:#163829; --warn:#F2B84B; --warn-soft:#3A2D12; --bad:#FF8A80; --bad-soft:#40201E; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F161D; --surface:#17212B; --sunk:#1E2A36; --line:#2C3A48;
+  --fg:#E4EBF1; --muted:#93A4B4; --accent:#8EA6FF; --accent-ink:#0F161D; --accent-soft:#25335E;
+  --good:#5DD39A; --good-soft:#163829; --warn:#F2B84B; --warn-soft:#3A2D12; --bad:#FF8A80; --bad-soft:#40201E; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(28px,6vw,40px);line-height:1.05}
+h2{font-size:20px}
+.eyebrow{font-family:var(--f-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.lede{color:var(--muted);max-width:62ch;margin:6px 0 0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* CAN SLIM letters */
+.letters{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.letter{border:1px solid var(--line);border-radius:8px;padding:8px 6px;background:var(--surface);display:flex;flex-direction:column;gap:2px;min-width:0}
+.letter b{font-family:var(--f-display);font-size:22px;line-height:1}
+.letter span{font-size:11px;color:var(--muted);line-height:1.25}
+.letter i{font-style:normal;font-family:var(--f-mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.letter.q{border-color:var(--accent)} .letter.q i{color:var(--accent)}
+.letter.c i{color:var(--good)} .letter.c{border-color:var(--good)}
+.letter.n i{color:var(--muted)}
+@media (max-width:560px){.letters{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* steps */
+.step{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.step-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.step-num{font-family:var(--f-mono);font-size:12px;color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:1px 8px}
+.query{background:var(--sunk);border-radius:8px;padding:12px;font-family:var(--f-mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word;margin:0;overflow-x:auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,.btn{font:inherit;font-size:14px;font-weight:500;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:38px}
+button:hover,.btn:hover{border-color:var(--accent)}
+button:focus-visible,.btn:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:not-allowed}
+textarea{width:100%;font-family:var(--f-mono);font-size:12.5px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical;min-height:110px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.file-label{position:relative;overflow:hidden}
+.file-label input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.msg{font-size:13.5px;padding:8px 12px;border-radius:8px;background:var(--accent-soft)}
+.msg.err{background:var(--bad-soft);color:var(--bad)}
+
+/* progress */
+.bar{height:6px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.bar>div{height:100%;background:var(--accent);width:0;transition:width .3s}
+@media (prefers-reduced-motion:reduce){.bar>div{transition:none}}
+
+/* summary + filters */
+.summary{display:flex;gap:8px;flex-wrap:wrap}
+.chip-filter{border-radius:99px;padding:6px 12px;min-height:34px;font-size:13px}
+.chip-filter[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chip-filter .ct{font-family:var(--f-mono);opacity:.75}
+.example{font-size:13px;border:1px dashed var(--warn);color:var(--warn);background:var(--warn-soft);padding:8px 12px;border-radius:8px}
+
+/* stock tickets */
+.list{display:flex;flex-direction:column;gap:10px}
+.ticket{background:var(--surface);border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px}
+.ticket.v-Shortlist{border-left-color:var(--good)}
+.ticket.v-Watch{border-left-color:var(--warn)}
+.ticket.v-Avoid{border-left-color:var(--bad)}
+.t-name{font-family:var(--f-display);font-size:18px;font-weight:700;line-height:1.2;min-width:0;overflow-wrap:anywhere}
+.t-sub{font-size:12.5px;color:var(--muted)}
+.t-score{text-align:right}
+.t-score .big{font-family:var(--f-display);font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.t-score .lbl{font-size:10.5px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.metrics{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 14px;font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.metrics b{color:var(--fg);font-weight:500}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:99px;background:var(--sunk);color:var(--muted)}
+.pill.Shortlist{background:var(--good-soft);color:var(--good)}
+.pill.Watch{background:var(--warn-soft);color:var(--warn)}
+.pill.Avoid{background:var(--bad-soft);color:var(--bad)}
+.pill.positive{background:var(--good-soft);color:var(--good)}
+.pill.negative{background:var(--bad-soft);color:var(--bad)}
+.pill.mixed{background:var(--warn-soft);color:var(--warn)}
+.thesis{grid-column:1/-1;margin:0;font-size:14.5px}
+details{grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px}
+summary{cursor:pointer;font-size:13px;color:var(--accent);font-weight:500}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}
+@media (max-width:640px){.cols{grid-template-columns:1fr}}
+.cols h4{margin:0 0 4px;font-size:11.5px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500}
+.cols ul{margin:0;padding-left:18px;font-size:13.5px;display:flex;flex-direction:column;gap:3px}
+.notes-box{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.notes-box textarea{min-height:70px}
+.asof{font-size:12px;color:var(--muted);margin-top:8px}
+.pending{grid-column:1/-1;font-size:13px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:30px 10px;border:1px dashed var(--line);border-radius:10px}
+footer{font-size:12.5px;color:var(--muted);max-width:70ch}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;background:var(--sunk);border-radius:10px;padding:14px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.check{font-size:13px;color:var(--muted)}
+.field input,.field select{font:inherit;font-size:14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:38px;width:100%}
+.check{display:flex;gap:8px;align-items:center;color:var(--fg)}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.techrow{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lt{font-family:var(--f-mono);font-size:11.5px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-variant-numeric:tabular-nums}
+.lt.ok{border-color:var(--good);color:var(--good);background:var(--good-soft)}
+.lt.no{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
+.sources{margin-top:8px;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+.sources a{color:var(--accent);overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">NSE · BSE · William O'Neill method</div>
+    <h1>CAN SLIM Desk</h1>
+    <p class="lede">Run the earnings screen on screener.in, bring the results here, and let Claude read each company's news flow and future plans to cut the list down to a shortlist.</p>
+  </header>
+
+  <section aria-label="What each part covers">
+    <div class="letters">
+      <div class="letter q"><b>C</b><span>Current qtr earnings</span><i>Query</i></div>
+      <div class="letter q"><b>A</b><span>Annual earnings</span><i>Query</i></div>
+      <div class="letter c"><b>N</b><span>New highs, new plans</span><i>Upstox · Claude</i></div>
+      <div class="letter c"><b>S</b><span>Supply &amp; demand</span><i>Upstox</i></div>
+      <div class="letter c"><b>L</b><span>Leader or laggard</span><i>Upstox</i></div>
+      <div class="letter c"><b>I</b><span>Institutional sponsor</span><i>Claude</i></div>
+      <div class="letter n"><b>M</b><span>Market direction</span><i>You</i></div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s1">
+    <div class="step-head"><span class="step-num">1</span><h2 id="s1">Run the screen</h2></div>
+    <pre class="query" id="queryText"></pre>
+    <div class="row">
+      <a class="btn" id="openScreener" href="#" target="_blank" rel="noopener">Open on screener.in ↗</a>
+      <button id="copyQuery" type="button">Copy query</button>
+    </div>
+    <p class="hint">Log in to screener.in first. On the results page, add the columns NSE Code, Industry, ROE and ROCE if you want them scored, then select the results table and copy it, or use Export.</p>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <div class="step-head"><span class="step-num">2</span><h2 id="s2">Bring in the results</h2></div>
+    <div class="settings">
+      <div class="field" style="grid-column:1/-1"><label for="ghUrl">GitHub link to canslim_screen.json (written by canslim_screener.py)</label><input id="ghUrl" type="url" placeholder="https://github.com/you/repo/blob/main/canslim/canslim_screen.json"></div>
+      <div class="field"><label for="ghRepo">Repo (owner/name)</label><input id="ghRepo" type="text" autocomplete="off" placeholder="donaldrasquinha-lab/canslim"></div>
+      <div class="field"><label for="ghToken">GitHub token (needed for Run screen now)</label><input id="ghToken" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+      <div class="field" style="grid-column:1/-1;gap:8px">
+        <label class="check"><input id="ghRemember" type="checkbox"> Remember token on this device</label>
+        <div class="row">
+          <button class="primary" id="ghRun" type="button">Run screen now</button>
+          <button id="ghLoad" type="button">Load last screen</button>
+        </div>
+        <p class="hint">Run screen now starts the screener on GitHub, waits about a minute for it to finish, then loads the new list.</p>
+      </div>
+    </div>
+    <label class="hint" for="pasteBox">Or paste the copied screener table, or a CSV with a Name column</label>
+    <textarea id="pasteBox" placeholder="S.No.	Name	CMP Rs.	P/E	Mar Cap Rs.Cr.	…"></textarea>
+    <div class="row">
+      <button id="importPaste" type="button">Import pasted table</button>
+      <label class="btn file-label">Upload CSV / Excel<input id="fileInput" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"></label>
+      <button id="clearAll" type="button">Clear list</button>
+    </div>
+    <div id="importMsg" class="msg" hidden></div>
+  </section>
+
+  <section class="step" aria-labelledby="s3">
+    <div class="step-head"><span class="step-num">3</span><h2 id="s3">Price checks on Upstox</h2></div>
+    <p class="hint">A year of daily candles per stock tests the letters the earnings query can't. <b>N</b>: within 15% of the 52-week high. <b>L</b>: weighted 3, 6, 9 and 12-month return beats Nifty 500 by 10 points or more. <b>S</b>: up-day volume beats down-day volume by 1.1× over 50 sessions. A stock passes when it clears N and L.</p>
+    <div class="settings">
+      <div class="field"><label for="upToken">Upstox access token</label><input id="upToken" type="password" autocomplete="off" placeholder="Today's token"></div>
+      <div class="field"><label for="instUrl">Instruments JSON link (only for pasted lists)</label><input id="instUrl" type="url" placeholder="Your instruments.json on GitHub"></div>
+      <p class="hint" style="grid-column:1/-1">The token is kept on this device until 3:30 AM IST, when Upstox tokens expire, and is sent only to api.upstox.com. Lists from canslim_screener.py already carry instrument keys.</p>
+    </div>
+    <div class="row">
+      <button class="primary" id="runUp" type="button">Run price checks</button>
+      <button id="stopUp" type="button" hidden>Stop</button>
+    </div>
+    <div id="upProgWrap" hidden><div class="bar"><div id="upBar"></div></div><p class="hint" id="upText"></p></div>
+    <div id="upMsg" class="msg" hidden></div>
+  </section>
+
+  <section class="step" aria-labelledby="s3b">
+    <div class="step-head"><span class="step-num">4</span><h2 id="s3b">Research and shortlist</h2></div>
+    <p class="hint">Claude reviews each company's growth plans, capex, order book, guidance, institutional interest and recent news, then scores the outlook. The final score weighs fundamentals 30%, price checks 30% and outlook 40%, using whichever parts have run. With live web search on, Claude searches the last 90 days of news for each stock. You can also paste headlines or concall notes into any stock's notes.</p>
+    <div class="settings" id="apiSettings">
+      <div class="field"><label for="apiKey">Anthropic API key</label><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
+      <div class="field"><label for="modelSel">Model</label>
+        <select id="modelSel">
+          <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (balanced)</option>
+          <option value="claude-opus-5-5">Claude Opus 5.5 (deepest, costlier)</option>
+          <option value="claude-haiku-5-5">Claude Haiku 5.5 (fastest, cheapest)</option>
+        </select></div>
+      <div class="field" style="justify-content:center;gap:8px">
+        <label class="check"><input id="useSaved" type="checkbox" checked> Use saved headlines (cheaper)</label>
+        <label class="check"><input id="liveSearch" type="checkbox" checked> Live web search when a stock has no headlines</label>
+        <label class="check"><input id="rememberKey" type="checkbox"> Remember key on this device</label>
+      </div>
+      <p class="hint" style="grid-column:1/-1">Optional and paid: everything else on this page is free, and without a key each card still shows its headlines and a free headline tone. The key goes only from this browser to api.anthropic.com. Live search runs one request per stock, with up to 3 searches each ($10 per 1,000 searches plus tokens). With search off, stocks go in batches of 6 using Claude's own knowledge, which has a cutoff date.</p>
+    </div>
+    <label class="check"><input id="onlyPassed" type="checkbox" checked> Only research stocks that pass the price checks</label>
+    <div class="row">
+      <button class="primary" id="runAll" type="button">Research stocks</button>
+      <button id="runPending" type="button">Research only unresearched</button>
+      <button id="stopBtn" type="button" hidden>Stop</button>
+    </div>
+    <div id="progWrap" hidden>
+      <div class="bar"><div id="progBar"></div></div>
+      <p class="hint" id="progText"></p>
+    </div>
+    <div id="runMsg" class="msg" hidden></div>
+  </section>
+
+  <section aria-labelledby="s4" style="display:flex;flex-direction:column;gap:12px">
+    <div class="step-head" style="justify-content:space-between">
+      <h2 id="s4">Stocks</h2>
+      <div class="row">
+        <button id="copyShort" type="button">Copy shortlist</button>
+        <button id="dlCsv" type="button" hidden>Download CSV</button>
+      </div>
+    </div>
+    <div id="exampleNote" class="example" hidden>Example list. Load your screen results in step 2 to replace it.</div>
+    <div class="summary" id="filters" role="group" aria-label="Filter by verdict"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <footer>Research aid only, not investment advice. Claude can be wrong or out of date about a company; check filings, exchange announcements and the latest concall before acting. The query covers C and A, Upstox price checks cover N, L and S, and Claude covers the new-plans side of N and the I. Market direction (M) is still your call.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const QUERY = `EPS latest quarter > 1.2 * EPS preceding year quarter AND
+EPS latest quarter > EPS preceding quarter AND
+YOY Quarterly sales growth > 20 AND
+YOY Quarterly profit growth > 20 AND
+Profit growth > 20 AND
+Sales growth > 20 AND
+Return on equity > 20 AND
+Return on capital employed > 15 AND
+Market Capitalization > 500`;
+const STORE = "canslim-desk-v1";
+
+const $ = s => document.querySelector(s);
+const EXAMPLE_ROWS = ["Example Industries", "Sample Capital Goods", "Demo Pharma"].map((n, i) => ({ id: "ex" + i, name: n, example: true }));
+
+let state = { rows: EXAMPLE_ROWS, analysis: {}, notes: {}, tech: {}, filter: "all", example: true };
+let sample = null, downloads = null, ctl = null, running = false;
+
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE) || "null"); if (s && s.rows && s.rows.length) state = { ...state, ...s, tech: s.tech || {}, example: false }; } catch (e) {}
+}
+function save() {
+  if (state.example) return;
+  try { localStorage.setItem(STORE, JSON.stringify({ rows: state.rows, analysis: state.analysis, notes: state.notes, tech: state.tech })); } catch (e) {}
+}
+
+/* ---------- parsing ---------- */
+const num = v => { if (v == null) return null; const x = parseFloat(String(v).replace(/[,₹%\s]/g, "")); return isFinite(x) ? x : null; };
+const COLS = {
+  name: /^(name|company)$/i, nse: /nse/i, bse: /bse/i, industry: /industry|sector/i,
+  price: /^cmp|current price/i, pe: /^p\/e|price to earning/i, mcap: /mar(ket)? ?cap/i,
+  roe: /^roe|return on equity/i, roce: /^roce|return on capital/i,
+  qp: /qtr profit var|quarterly profit growth/i, qs: /qtr sales var|quarterly sales growth/i,
+  promoter: /^(?!.*(chg|change)).*prom/i, prom_chg: /(chg|change).*prom/i, pledge: /pledg/i, fii_chg: /(chg|change).*fii/i, dii_chg: /(chg|change).*dii/i
+};
+function splitLine(line, d) {
+  if (d === "\t") return line.split("\t").map(s => s.trim());
+  const out = []; let cur = "", q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+    else if (c === d && !q) { out.push(cur.trim()); cur = ""; }
+    else cur += c;
+  }
+  out.push(cur.trim()); return out;
+}
+function rowsFromMatrix(m) {
+  const hi = m.findIndex(r => r.some(c => /^(name|company)$/i.test(String(c).trim())));
+  if (hi < 0) throw new Error("No Company or Name column found. Copy the table including its header row.");
+  const head = m[hi].map(c => String(c).trim());
+  const idx = {};
+  for (const [k, re] of Object.entries(COLS)) { const i = head.findIndex(h => re.test(h)); if (i >= 0) idx[k] = i; }
+  const seen = new Set(), rows = [];
+  for (const r of m.slice(hi + 1)) {
+    const name = String(r[idx.name] ?? "").trim();
+    if (!name || /^(name|company)$/i.test(name) || /median|^s\.?no/i.test(name) || /^\d+$/.test(name)) continue;
+    const id = (String(r[idx.nse] ?? "").trim() || name).toUpperCase();
+    if (seen.has(id)) continue; seen.add(id);
+    const g = k => idx[k] != null ? r[idx[k]] : null;
+    rows.push({ id, name, nse: String(g("nse") ?? "").trim() || null, bse: String(g("bse") ?? "").trim() || null,
+      industry: String(g("industry") ?? "").trim() || null, price: num(g("price")), pe: num(g("pe")), mcap: num(g("mcap")),
+      roe: num(g("roe")), roce: num(g("roce")), qp: num(g("qp")), qs: num(g("qs")),
+      promoter: num(g("promoter")), prom_chg: num(g("prom_chg")), pledge: num(g("pledge")), fii_chg: num(g("fii_chg")), dii_chg: num(g("dii_chg")) });
+  }
+  if (!rows.length) throw new Error("Header found, but no stock rows under it.");
+  return rows;
+}
+function parseText(text) {
+  const lines = text.replace(/\r/g, "").split("\n").filter(l => l.trim());
+  const d = lines.some(l => l.includes("\t")) ? "\t" : ",";
+  return rowsFromMatrix(lines.map(l => splitLine(l, d)));
+}
+function setRows(rows) {
+  const keepA = {}, keepN = {}, keepT = {}, today = istDate(0);
+  if (!state.example) for (const r of rows) {
+    if (state.analysis[r.id]) keepA[r.id] = state.analysis[r.id];
+    if (state.notes[r.id]) keepN[r.id] = state.notes[r.id];
+    if (state.tech[r.id] && !state.tech[r.id].error && (state.tech[r.id].at || "").slice(0, 10) === today) keepT[r.id] = state.tech[r.id]; // price checks go stale daily
+  }
+  state = { ...state, rows, analysis: keepA, notes: keepN, tech: keepT, example: false, filter: "all" };
+  save(); render();
+  const kept = Object.keys(keepA).length;
+  showMsg($("#importMsg"), `Imported ${rows.length} stocks.` + (kept ? ` Kept earlier research for ${kept}.` : ""));
+}
+function showMsg(el, text, err) { el.textContent = text; el.className = "msg" + (err ? " err" : ""); el.hidden = !text; }
+
+/* ---------- scoring ---------- */
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lin = (x, lo, hi) => clamp((x - lo) / (hi - lo), 0, 1) * 100;
+function fundScore(r) {
+  const parts = [];
+  if (r.roe != null) parts.push(lin(r.roe, 15, 40));
+  if (r.roce != null) parts.push(lin(r.roce, 15, 40));
+  if (r.qp != null) parts.push(lin(r.qp, 20, 100));
+  if (r.qs != null) parts.push(lin(r.qs, 20, 60));
+  if (r.pe != null && r.pe > 0) parts.push(100 - lin(r.pe, 20, 90));
+  return parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
+}
+/* ---------- free headline tone (keyword rules) ---------- */
+const POS_RE = [/\b(bags?|wins?|secures?|receives?|bagged|won|secured|received)\b.*\b(orders?|contracts?|deals?|projects?)\b/i, /\border (inflow|book|win)/i,
+  /capacity (expansion|addition)|expands? capacity|new (plant|facility|unit)|commissions?|capex/i, /record (high )?(profit|revenue|sales|order)/i, /52.?week high|all.?time high|record high|multibagger/i,
+  /(profit|revenue|sales|earnings|ebitda|pat)\b.*\b(jumps?|surges?|rises?|soars?|climbs?|grows?|doubles?|up \d)/i, /beats? (estimates|expectations)/i,
+  /upgrade|target (price )?(raised|hiked)|raises? target|buy rating|\boutperform/i, /acquires?|acquisition|partnership|tie-?up|\bjv\b|joint venture/i,
+  /approval|approves|launch(es|ed)?\b|bonus issue|stock split|special dividend/i, /guidance (raised|upgraded)|margin (expansion|improves?)/i,
+  /(fii|dii|mutual fund|promoter)s?\b.*\b(buys?|raises?|increases?|hikes?) stake|stake (buy|hike)/i];
+const NEG_RE = [/penalty|fined?\b|show.?cause|tax demand|warning letter|usfda (observation|ban)|import alert/i, /probe|raid|sebi (order|ban|action)|fraud|forensic|whistle.?blower/i,
+  /downgrade|target (price )?(cut|lowered)|cuts? target|sell rating|underperform/i, /(profit|revenue|sales|earnings|ebitda|pat)\b.*\b(falls?|drops?|declines?|slumps?|plunges?|dips?|down \d)|net loss|loss widens/i,
+  /miss(es)? (estimates|expectations)|margin (pressure|contraction|squeeze)/i, /pledge|default|insolvency|nclt|resigns?|resignation|exits?\b.*\b(ceo|cfo|md)/i,
+  /(promoter|fii|dii)s?\b.*\b(sells?|offloads?|cuts?|trims?) stake|stake sale|block deal.*sell/i, /shutdown|shut down|fire at|strike at|plant closure|recall|ban on/i];
+function headlineTone(t) {
+  const pos = POS_RE.some(re => re.test(t)), neg = NEG_RE.some(re => re.test(t));
+  return pos && !neg ? 1 : neg && !pos ? -1 : 0;
+}
+function newsTone(r) {
+  if (!Array.isArray(r.news) || !r.news.length) return null;
+  let pos = 0, neg = 0;
+  for (const n of r.news) { const v = headlineTone(n.t || ""); if (v > 0) pos++; else if (v < 0) neg++; }
+  return { pos, neg, n: r.news.length, score: clamp(50 + 12 * (pos - neg), 0, 100) };
+}
+
+function finalScore(r) {
+  const a = state.analysis[r.id], t = state.tech[r.id], f = fundScore(r), nt = newsTone(r);
+  const parts = [[f, .3], [t && !t.error ? t.score : null, .3], [a ? clamp(Number(a.outlook_score) || 0, 0, 100) : null, .4],
+    [!a && nt ? nt.score : null, .15]].filter(p => p[0] != null);   // headline tone stands in until Claude has researched the stock
+  if (!a && !(t && !t.error) && !nt) return null;
+  const w = parts.reduce((s, p) => s + p[1], 0);
+  return Math.round(parts.reduce((s, p) => s + p[0] * p[1], 0) / w);
+}
+
+/* ---------- Claude ---------- */
+function promptFor(rows, live) {
+  const today = new Date().toISOString().slice(0, 10);
+  const lines = rows.map(r => {
+    const o = { id: r.id, name: r.name };
+    for (const k of ["nse", "industry", "price", "pe", "mcap", "roe", "roce", "qp", "qs", "promoter", "prom_chg", "pledge", "fii_chg", "dii_chg"]) if (r[k] != null) o[k] = r[k];
+    if (state.notes[r.id]) o.latest_notes_from_user = state.notes[r.id].slice(0, 3000);
+    if (!live && Array.isArray(r.news) && r.news.length) o.recent_headlines = r.news.map(n => `${(n.d || "").slice(0, 10)} | ${n.s || ""} | ${n.t}`);
+    return JSON.stringify(o);
+  }).join("\n");
+  return `You are an Indian equities analyst reviewing CAN SLIM candidates listed on NSE/BSE. Today is ${today}. Every company below already passed an earnings screen: quarterly EPS up 20%+ year on year and up sequentially, quarterly sales and profit growth over 20%, ROE over 20%, ROCE over 15%. Fields: price in Rs, mcap in Rs crore, pe, roe/roce in %, qp/qs = latest quarter profit/sales growth YoY in %, promoter = promoter holding %, prom_chg/fii_chg/dii_chg = change in holding (percentage points, latest quarter), pledge = % of promoter shares pledged.
+
+For each company judge whether the growth can continue, using news flow and future plans: capex and capacity expansion, new products or markets, order book, management guidance, fund raising, promoter activity, institutional (FII/DII/MF) interest, regulatory or governance issues, customer concentration, and whether the latest quarter looks one-off.
+
+${live ? `Use web search first: look for news from roughly the last 90 days about this company (quarterly results, concall commentary, order wins, capex or capacity announcements, fund raising, rating actions, promoter or block deals, regulatory issues). Prefer exchange filings, company releases and established Indian business media. Put the date of the newest item you found in "as_of".\n\n` : ""}If "recent_headlines" is present, those are real news headlines from the last 30 days, newest first ("date | source | headline"). Base news_tone, catalysts and risks on them first, ignore headlines that are clearly about a different company, and put the newest headline date in "as_of".
+
+Your own knowledge has a cutoff. State how current your information is in "as_of". Never invent specific recent events, numbers or dates you are not confident about. If "latest_notes_from_user" is present, treat it as the newest information and weigh it heavily. If you do not recognise a company, say so in the thesis, set confidence "low" and verdict "Watch".
+
+Verdict: "Shortlist" = durable growth story with visible catalysts; "Watch" = promising but unclear or stretched; "Avoid" = one-off growth, governance flags, or deteriorating outlook.
+
+Reply with only a JSON array, one object per company, same order, shaped:
+{"id":"<id as given>","outlook_score":0-100,"verdict":"Shortlist|Watch|Avoid","thesis":"max 30 words","future_plans":["up to 3 short items"],"catalysts":["up to 3"],"risks":["up to 3"],"institutional":"one short line on FII/DII/MF interest or 'unknown'","news_tone":"positive|mixed|negative|unknown","as_of":"e.g. info to early 2026","confidence":"high|medium|low"}
+
+Companies:
+${lines}`;
+}
+const ERR = {
+  not_granted: "Claude access was not allowed for this page. Reload and choose Allow to run research.",
+  sampling_disabled: "Claude is not available on this account.",
+  rate_limited: "Usage limit reached for now. Wait a few minutes, then use Research only unresearched to continue.",
+  session_expired: "Your Claude session expired. Sign in again and reload.",
+  invalid_json: "Claude's reply could not be read for one batch. Run Research only unresearched to retry it.",
+  refused: "Claude declined one batch. Try fewer stocks or edit the notes.",
+  no_key: "Enter your Anthropic API key in step 3 first.",
+  auth: "The API key was rejected. Check it at console.anthropic.com and paste it again.",
+  credit: "The API account has no credit left. Add credit at console.anthropic.com.",
+  network: "Could not reach api.anthropic.com. Check your connection, then use Research only unresearched.",
+  api_rate: "The API is rate-limiting this key. Wait a minute, then use Research only unresearched.",
+};
+const errText = e => ERR[e?.code] || (e?.message ? "Research failed: " + e.message : "The research request failed. Try again in a moment.");
+const STOP_CODES = new Set(["not_granted", "sampling_disabled", "rate_limited", "session_expired", "not_declared", "capability_disabled", "capability_removed", "no_key", "auth", "credit", "network", "api_rate"]);
+
+/* ---- engine: Claude inside claude.ai, else direct Anthropic API ---- */
+const KEY_STORE = "canslim-desk-key", SET_STORE = "canslim-desk-settings";
+const inClaude = () => !!sample;
+const apiCfg = () => ({ key: $("#apiKey").value.trim(), model: $("#modelSel").value, live: $("#liveSearch").checked });
+const sleep = (ms, signal) => new Promise((res, rej) => { const t = setTimeout(res, ms); signal?.addEventListener("abort", () => { clearTimeout(t); rej({ code: "cancelled" }); }, { once: true }); });
+const fail = (code, message) => { const e = new Error(message || code); e.code = code; return e; };
+
+function parseJSONLoose(text) {
+  const t = String(text || "").trim();
+  try { return JSON.parse(t); } catch {}
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/); if (fence) { try { return JSON.parse(fence[1]); } catch {} }
+  const s = t.search(/[\[{]/), e = Math.max(t.lastIndexOf("]"), t.lastIndexOf("}"));
+  if (s >= 0 && e > s) { try { return JSON.parse(t.slice(s, e + 1)); } catch {} }
+  throw fail("invalid_json");
+}
+
+async function apiPost(body, signal) {
+  const { key } = apiCfg();
+  for (let attempt = 0; ; attempt++) {
+    const timeout = new AbortController();
+    const timer = setTimeout(() => timeout.abort(), 180000);
+    const onAbort = () => timeout.abort(); signal.addEventListener("abort", onAbort, { once: true });
+    let res;
+    try {
+      res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", signal: timeout.signal,
+        headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      if (signal.aborted) throw { code: "cancelled" };
+      if (attempt < 2) { await sleep(2000 * 2 ** attempt, signal); continue; }
+      throw fail("network");
+    } finally { clearTimeout(timer); signal.removeEventListener("abort", onAbort); }
+    if (res.ok) return res.json();
+    const j = await res.json().catch(() => ({}));
+    const msg = j?.error?.message || res.statusText;
+    if (res.status === 401 || res.status === 403) throw fail("auth", msg);
+    if (res.status === 400 && /credit|balance/i.test(msg)) throw fail("credit", msg);
+    if ((res.status === 429 || res.status === 529 || res.status >= 500) && attempt < 4) {
+      const ra = Number(res.headers.get("retry-after"));
+      await sleep((ra > 0 ? ra * 1000 : 0) || 2000 * 2 ** attempt, signal); continue;
+    }
+    if (res.status === 429) throw fail("api_rate", msg);
+    throw fail("api", msg);
+  }
+}
+
+async function apiAnalyze(batch, signal, live) {
+  const { model } = apiCfg();
+  const messages = [{ role: "user", content: promptFor(batch, live) }];
+  const body = { model, max_tokens: 4000, messages };
+  if (live) body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 3, user_location: { type: "approximate", country: "IN", timezone: "Asia/Kolkata" } }];
+  const sources = new Map();
+  let resp;
+  for (let turn = 0; turn < 4; turn++) {
+    resp = await apiPost(body, signal);
+    for (const b of resp.content || []) {
+      if (b.type === "web_search_tool_result" && Array.isArray(b.content))
+        for (const r of b.content) if (r.url && !sources.has(r.url)) sources.set(r.url, { url: r.url, title: r.title || r.url, age: r.page_age || "" });
+    }
+    if (resp.stop_reason !== "pause_turn") break;
+    messages.push({ role: "assistant", content: resp.content });
+  }
+  const text = (resp.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+  const out = parseJSONLoose(text);
+  return { arr: Array.isArray(out) ? out : [out], sources: [...sources.values()].slice(0, 5) };
+}
+
+async function analyze(batch, signal, fresh) {
+  if (inClaude()) {
+    const out = await sample.json(promptFor(batch, false), { signal, ...(fresh ? { cache: false } : {}) });
+    return { arr: Array.isArray(out) ? out : [], sources: [] };
+  }
+  return apiAnalyze(batch, signal, batch.live);
+}
+
+async function research(rows, { fresh = false } = {}) {
+  if (running || !rows.length) return;
+  if (!inClaude() && !apiCfg().key) { showMsg($("#runMsg"), ERR.no_key, true); $("#apiKey").focus(); return; }
+  // Stocks with saved headlines go 6 per request with no web search; the rest search live (one per request) if that is ticked.
+  const saved = $("#useSaved").checked, liveOn = !inClaude() && apiCfg().live;
+  const hasNews = r => Array.isArray(r.news) && r.news.length > 0;
+  const quiet = rows.filter(r => (saved && hasNews(r)) || !liveOn), searchy = rows.filter(r => !((saved && hasNews(r)) || !liveOn));
+  const batches = [];
+  for (let i = 0; i < quiet.length; i += 6) batches.push(Object.assign(quiet.slice(i, i + 6), { live: false }));
+  for (const r of searchy) batches.push(Object.assign([r], { live: true }));
+  const parallel = searchy.length ? 2 : 1;
+  running = true; ctl = new AbortController(); setRunning(true);
+  showMsg($("#runMsg"), "");
+  let done = 0, failed = 0, stopErr = null, next = 0;
+  const total = rows.length, signal = ctl.signal;
+  const inFlight = new Set();
+  const tick = () => progress(done, total, `${done} of ${total} researched` + (inFlight.size ? ` · working on ${[...inFlight].join(", ")}` : ""));
+  async function worker() {
+    while (next < batches.length && !stopErr && !signal.aborted) {
+      const batch = batches[next++];
+      const label = batch.length === 1 ? batch[0].name : `${batch[0].name} +${batch.length - 1}`;
+      inFlight.add(label); tick();
+      try {
+        const { arr, sources } = await analyze(batch, signal, fresh);
+        batch.forEach((r, j) => {
+          const a = arr.find(x => String(x?.id).toUpperCase() === r.id) || arr[j];
+          if (a && typeof a === "object") state.analysis[r.id] = { ...a, sources: batch.length === 1 ? sources : [], live: batch.live, headlines: !batch.live && hasNews(r) ? r.news.length : 0, at: new Date().toISOString() }; else failed++;
+        });
+        save(); render();
+      } catch (e) {
+        if (e?.code === "cancelled") return;
+        failed += batch.length;
+        showMsg($("#runMsg"), errText(e), true);
+        if (STOP_CODES.has(e?.code)) stopErr = e;
+      } finally { inFlight.delete(label); done += batch.length; tick(); }
+    }
+  }
+  try {
+    await Promise.all(Array.from({ length: Math.min(parallel, batches.length) }, worker));
+    if (signal.aborted) progress(done, total, "Stopped.");
+    else if (!failed) showMsg($("#runMsg"), `Research done for ${total} stock${total > 1 ? "s" : ""}.`);
+    else if (!stopErr) showMsg($("#runMsg"), `${failed} stock${failed > 1 ? "s" : ""} could not be researched. Use Research only unresearched to retry.`, true);
+  } finally { running = false; ctl = null; setRunning(false); }
+}
+function progress(d, t, text) { $("#progWrap").hidden = false; $("#progBar").style.width = (t ? d / t * 100 : 0) + "%"; $("#progText").textContent = text; }
+function setRunning(on) {
+  const busy = on || upRunning || running;
+  for (const id of ["#runAll", "#runPending", "#importPaste", "#clearAll", "#ghLoad", "#ghRun", "#runUp"]) $(id).disabled = busy;
+  $("#stopUp").hidden = !upRunning; $("#stopBtn").hidden = !running;
+  document.querySelectorAll(".reanalyse").forEach(b => b.disabled = busy);
+}
+
+/* ---------- render ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (v, suf = "") => v == null ? "—" : (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("en-IN") : (+v.toFixed(1)).toString()) + suf;
+const list = a => Array.isArray(a) && a.length ? `<ul>${a.slice(0, 3).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="hint">None noted</p>`;
+const newsUrl = r => "https://news.google.com/search?q=" + encodeURIComponent(`"${r.name}"` + (r.nse ? ` OR ${r.nse}` : "") + " when:30d") + "&hl=en-IN&gl=IN&ceid=IN:en";
+const screenerUrl = r => r.nse ? `https://www.screener.in/company/${encodeURIComponent(r.nse)}/consolidated/` : "https://www.screener.in/search/?q=" + encodeURIComponent(r.name);
+
+function sortedRows() {
+  return [...state.rows].sort((a, b) => (finalScore(b) ?? -1) - (finalScore(a) ?? -1) || a.name.localeCompare(b.name));
+}
+function render() {
+  $("#exampleNote").hidden = !state.example;
+  const rows = sortedRows();
+  const counts = { all: rows.length, passed: 0, Shortlist: 0, Watch: 0, Avoid: 0, pending: 0 };
+  rows.forEach(r => { const v = state.analysis[r.id]?.verdict; counts[counts[v] != null && v !== "passed" ? v : "pending"]++; if (techPass(state.tech[r.id])) counts.passed++; });
+  const F = [["all", "All"], ["passed", "Price checks passed"], ["Shortlist", "Shortlist"], ["Watch", "Watch"], ["Avoid", "Avoid"], ["pending", "Not researched"]];
+  $("#filters").innerHTML = F.map(([k, l]) => `<button type="button" class="chip-filter" data-f="${k}" aria-pressed="${state.filter === k}">${l} <span class="ct">${counts[k]}</span></button>`).join("");
+  const shown = rows.filter(r => { const v = state.analysis[r.id]?.verdict; return state.filter === "all" || (state.filter === "passed" ? techPass(state.tech[r.id]) : state.filter === "pending" ? !state.analysis[r.id] : v === state.filter); });
+  $("#list").innerHTML = shown.length ? shown.map(ticket).join("") : `<div class="empty">No stocks in this view.</div>`;
+  $("#copyShort").disabled = !counts.Shortlist;
+  setRunning(running);
+}
+function ticket(r) {
+  const a = state.analysis[r.id], fs = fundScore(r), sc = finalScore(r), tt = state.tech[r.id];
+  const metrics = [
+    ["CMP", r.price != null ? "₹" + fmt(r.price) : (tt && tt.last ? "₹" + fmt(tt.last) : null)], ["P/E", r.pe != null ? fmt(r.pe) : null], ["MCap", r.mcap != null ? "₹" + fmt(r.mcap) + " Cr" : null],
+    ["ROE", r.roe != null ? fmt(r.roe, "%") : null], ["ROCE", r.roce != null ? fmt(r.roce, "%") : null],
+    ["Qtr profit", r.qp != null ? fmt(r.qp, "%") : null], ["Qtr sales", r.qs != null ? fmt(r.qs, "%") : null], ["Fund. score", fs]
+  ].filter(m => m[1] != null).map(([k, v]) => `<span>${k} <b>${esc(v)}</b></span>`).join("");
+  const sub = [r.nse || r.bse, r.industry].filter(Boolean).map(esc).join(" · ");
+  const t = state.tech[r.id];
+  const sg = x => (x >= 0 ? "+" : "") + x.toFixed(1);
+  const techRow = !t ? "" : t.error ? `<div class="techrow"><span class="lt">Price checks: ${esc(t.error)}</span></div>` : `<div class="techrow">
+      <span class="lt ${t.pass.N ? "ok" : "no"}">N ${sg(t.fromHigh)}% from 52w high</span>
+      <span class="lt ${t.pass.L ? "ok" : "no"}">L ${t.rsDiff != null ? sg(t.rsDiff) + " pts vs N500" : "n/a"}</span>
+      <span class="lt ${t.pass.S ? "ok" : "no"}">S U/D vol ${t.ud != null ? t.ud.toFixed(2) + "×" : "n/a"}</span>
+      ${t.build != null ? `<span class="lt ${t.build >= 1.2 && t.accum > t.dist ? "ok" : t.build < 0.8 || t.dist > t.accum + 1 ? "no" : ""}">Vol build-up ${t.build.toFixed(2)}× (10d vs 50d) · ${t.accum} accum / ${t.dist} dist days</span>` : ""}
+      ${t.volX != null ? `<span class="lt">Today ${t.volX.toFixed(1)}× avg vol</span>` : ""}
+      ${t.above200 != null ? `<span class="lt ${t.above50 && t.above200 ? "ok" : ""}">${t.above50 ? "Above" : "Below"} 50 DMA · ${t.above200 ? "above" : "below"} 200 DMA</span>` : ""}
+      <span class="lt">Tech score <b>${t.score}</b></span></div>`;
+  const sgn = x => (x > 0 ? "▲" : x < 0 ? "▼" : "") + Math.abs(x).toFixed(2);
+  const holdBits = [];
+  if (r.promoter != null) holdBits.push(`<span class="lt ${r.prom_chg > 0 ? "ok" : r.prom_chg < 0 ? "no" : ""}">Promoter ${r.promoter.toFixed(1)}%${r.prom_chg != null ? " (" + sgn(r.prom_chg) + ")" : ""}</span>`);
+  if (r.pledge != null) holdBits.push(`<span class="lt ${r.pledge > 10 ? "no" : r.pledge === 0 ? "ok" : ""}">Pledged ${r.pledge.toFixed(1)}%</span>`);
+  if (r.fii_chg != null) holdBits.push(`<span class="lt ${r.fii_chg > 0 ? "ok" : r.fii_chg < 0 ? "no" : ""}">FII ${sgn(r.fii_chg)}</span>`);
+  if (r.dii_chg != null) holdBits.push(`<span class="lt ${r.dii_chg > 0 ? "ok" : r.dii_chg < 0 ? "no" : ""}">DII ${sgn(r.dii_chg)}</span>`);
+  const holdRow = holdBits.length ? `<div class="techrow">${holdBits.join("")}</div>` : "";
+  const nt = newsTone(r);
+  const toneChip = nt ? `<span class="lt ${nt.pos > nt.neg ? "ok" : nt.neg > nt.pos ? "no" : ""}">News ${nt.n} · +${nt.pos} / −${nt.neg}</span>` : (Array.isArray(r.news) ? `<span class="lt">No news in 30 days</span>` : "");
+  const heads = Array.isArray(r.news) && r.news.length ? `<div class="sources"><h4 style="margin:6px 0 2px;font-size:11.5px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500">Headlines, last 30 days</h4>${r.news.map(n => { const v = headlineTone(n.t || ""); return `<a href="${esc(n.u)}" target="_blank" rel="noopener">${v > 0 ? "▲ " : v < 0 ? "▼ " : ""}${esc(n.t)}</a><span class="hint" style="display:inline">${esc(n.s || "")}${n.d ? " · " + esc(new Date(n.d).toLocaleDateString("en-IN", { day: "numeric", month: "short" })) : ""}</span>`; }).join("")}</div>` : "";
+  const links = r.example ? "" : heads + `<div class="row" style="margin-top:10px"><a class="btn" href="${newsUrl(r)}" target="_blank" rel="noopener">Latest news ↗</a><a class="btn" href="${screenerUrl(r)}" target="_blank" rel="noopener">screener.in ↗</a></div>`;
+  const notes = r.example ? "" : `<div class="notes-box"><label class="hint" for="n-${esc(r.id)}">Recent headlines, results or concall notes for this stock</label>
+      <textarea id="n-${esc(r.id)}" data-notes="${esc(r.id)}" placeholder="Paste anything newer than Claude's cutoff: order wins, capex announcements, guidance, block deals…">${esc(state.notes[r.id] || "")}</textarea>
+      <div class="row"><button type="button" class="reanalyse" data-re="${esc(r.id)}">Re-research with these notes</button></div></div>`;
+  const body = a ? `
+    <p class="thesis">${esc(a.thesis)}</p>
+    <details>
+      <summary>Plans, catalysts and risks</summary>
+      <div class="cols">
+        <div><h4>Future plans</h4>${list(a.future_plans)}</div>
+        <div><h4>Catalysts</h4>${list(a.catalysts)}</div>
+        <div><h4>Risks</h4>${list(a.risks)}</div>
+      </div>
+      <p class="asof">Institutions: ${esc(a.institutional || "unknown")}<br>News tone <span class="pill ${esc(a.news_tone)}">${esc(a.news_tone || "unknown")}</span> · confidence ${esc(a.confidence || "?")} · ${esc(a.as_of || "")}${a.live ? " · live web search" : a.headlines ? ` · from ${a.headlines} saved headlines` : ""}${state.notes[r.id] ? " · uses your notes" : ""}</p>
+      ${Array.isArray(a.sources) && a.sources.length ? `<div class="sources"><h4 style="margin:6px 0 2px;font-size:11.5px;font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500">Sources searched</h4>${a.sources.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>${x.age ? ` <span class="hint" style="display:inline">${esc(x.age)}</span>` : ""}`).join("")}</div>` : ""}
+      ${links}${notes}
+    </details>` : `<p class="pending">${r.example ? "Example row" : "Not researched yet."}</p>${r.example ? "" : `<details><summary>${Array.isArray(r.news) && r.news.length ? "Headlines, links and notes" : "News links and notes"}</summary>${links}${notes}</details>`}`;
+  return `<article class="ticket ${a ? "v-" + esc(a.verdict) : ""}">
+    <div style="min-width:0"><div class="t-name">${esc(r.name)}</div><div class="t-sub">${sub || "&nbsp;"}</div>
+      ${a ? `<div style="margin-top:6px"><span class="pill ${esc(a.verdict)}">${esc(a.verdict)}</span></div>` : ""}</div>
+    <div class="t-score"><div class="big">${sc ?? "—"}</div><div class="lbl">score</div></div>
+    ${metrics ? `<div class="metrics">${metrics}${a ? `<span>Outlook <b>${esc(a.outlook_score)}</b></span>` : ""}</div>` : ""}
+    ${techRow}
+    ${holdRow}
+    ${toneChip ? `<div class="techrow">${toneChip}</div>` : ""}
+    ${body}
+  </article>`;
+}
+
+/* ---------- export ---------- */
+function shortlistText() {
+  return sortedRows().filter(r => state.analysis[r.id]?.verdict === "Shortlist")
+    .map((r, i) => `${i + 1}. ${r.name}${r.nse ? " (" + r.nse + ")" : ""} — score ${finalScore(r)}\n   ${state.analysis[r.id].thesis || ""}`).join("\n");
+}
+function csvText() {
+  const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const head = ["Name", "NSE", "Industry", "CMP", "PE", "MCap Cr", "ROE", "ROCE", "Qtr profit %", "Qtr sales %", "Fund score", "% from 52w high", "RS vs N500 pts", "Up/down vol", "Vol build-up 10d/50d", "Accum days", "Dist days", "N", "L", "S", "Tech score", "Promoter %", "Promoter chg", "Pledged %", "FII chg", "DII chg", "Outlook", "Final score", "Verdict", "Thesis", "Future plans", "Catalysts", "Risks", "News tone", "Confidence", "As of", "Headlines 30d", "Headline tone +/-", "Latest headline"];
+  const lines = sortedRows().map(r => { const a = state.analysis[r.id] || {}, T = state.tech[r.id] || {}; const j = x => (x || []).join("; ");
+    return [r.name, r.nse, r.industry, r.price, r.pe, r.mcap, r.roe, r.roce, r.qp, r.qs, fundScore(r), T.fromHigh?.toFixed(1), T.rsDiff?.toFixed(1), T.ud?.toFixed(2), T.build?.toFixed(2), T.accum, T.dist, T.pass ? (T.pass.N ? "Y" : "N") : "", T.pass ? (T.pass.L ? "Y" : "N") : "", T.pass ? (T.pass.S ? "Y" : "N") : "", T.score, r.promoter, r.prom_chg, r.pledge, r.fii_chg, r.dii_chg, a.outlook_score, finalScore(r), a.verdict, a.thesis, j(a.future_plans), j(a.catalysts), j(a.risks), a.news_tone, a.confidence, a.as_of, r.news ? r.news.length : "", newsTone(r) ? `+${newsTone(r).pos}/-${newsTone(r).neg}` : "", r.news?.[0]?.t || ""].map(q).join(","); });
+  return [head.map(q).join(","), ...lines].join("\n");
+}
+
+/* ---------- events ---------- */
+$("#queryText").textContent = QUERY;
+$("#openScreener").href = "https://www.screener.in/screen/raw/?query=" + encodeURIComponent(QUERY.replace(/\n/g, " "));
+$("#copyQuery").onclick = async e => { try { await navigator.clipboard.writeText(QUERY); e.target.textContent = "Copied"; } catch { const s = getSelection(); s.selectAllChildren($("#queryText")); e.target.textContent = "Selected, copy it"; } setTimeout(() => e.target.textContent = "Copy query", 1800); };
+$("#importPaste").onclick = () => { try { const t = $("#pasteBox").value; if (!t.trim()) throw new Error("Paste the screener table first."); setRows(parseText(t)); $("#pasteBox").value = ""; } catch (err) { showMsg($("#importMsg"), err.message, true); } };
+$("#fileInput").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    if (/\.xlsx?$/i.test(f.name)) {
+      if (!window.XLSX) throw new Error("Excel reader did not load. Save the file as CSV and upload that.");
+      const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+      let rows = null, lastErr;
+      for (const sn of wb.SheetNames) { try { rows = rowsFromMatrix(XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: "" })); break; } catch (er) { lastErr = er; } }
+      if (!rows) throw lastErr; setRows(rows);
+    } else setRows(parseText(await f.text()));
+  } catch (err) { showMsg($("#importMsg"), err.message || "Could not read that file.", true); }
+  e.target.value = "";
+};
+let clearArmed = false;
+$("#clearAll").onclick = e => {
+  if (!clearArmed) { clearArmed = true; e.target.textContent = "Tap again to clear"; setTimeout(() => { clearArmed = false; e.target.textContent = "Clear list"; }, 3000); return; }
+  clearArmed = false; e.target.textContent = "Clear list";
+  try { localStorage.removeItem(STORE); } catch {}
+  state = { rows: EXAMPLE_ROWS, analysis: {}, notes: {}, tech: {}, filter: "all", example: true }; render(); showMsg($("#importMsg"), "List cleared.");
+};
+const realRows = () => {
+  if (state.example) return [];
+  const all = sortedRows();
+  if (!$("#onlyPassed").checked) return all;
+  if (!all.some(r => state.tech[r.id])) { showMsg($("#runMsg"), "Run the price checks in step 3 first, or untick the price-check filter.", true); return null; }
+  return all.filter(r => techPass(state.tech[r.id]));
+};
+$("#runAll").onclick = () => { if (state.example) return showMsg($("#runMsg"), "Load your screen results first.", true); const rs = realRows(); if (rs === null) return; if (!rs.length) return showMsg($("#runMsg"), "No stocks pass the price checks, so there is nothing to research.", true); research(rs); };
+$("#runPending").onclick = () => { if (state.example) return showMsg($("#runMsg"), "Load your screen results first.", true); const rs = realRows(); if (rs === null) return; const p = rs.filter(r => !state.analysis[r.id]); if (!p.length) return showMsg($("#runMsg"), "Every stock already has research."); research(p); };
+$("#stopBtn").onclick = () => ctl?.abort();
+$("#filters").onclick = e => { const b = e.target.closest("[data-f]"); if (b) { state.filter = b.dataset.f; render(); } };
+$("#list").addEventListener("input", e => { const id = e.target.dataset.notes; if (id != null) { state.notes[id] = e.target.value; save(); } });
+$("#list").onclick = e => { const b = e.target.closest("[data-re]"); if (b) { const r = state.rows.find(x => x.id === b.dataset.re); if (r) research([r], { fresh: true }); } };
+$("#copyShort").onclick = async e => { const t = shortlistText(); try { await navigator.clipboard.writeText(t); e.target.textContent = "Copied"; } catch { $("#pasteBox").value = t; e.target.textContent = "Placed in step 2 box"; } setTimeout(() => e.target.textContent = "Copy shortlist", 1800); };
+$("#dlCsv").onclick = async () => {
+  const filename = `canslim-shortlist-${new Date().toISOString().slice(0, 10)}.csv`, data = csvText();
+  if (downloads) { try { await downloads.save({ filename, data }); } catch (e) { if (e?.code === "unavailable") $("#dlCsv").hidden = true; } return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: "text/csv" })); a.download = filename;
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+};
+
+/* ---------- GitHub loader ---------- */
+const GH_STORE = "canslim-desk-gh";
+function rowsFromJson(p) {
+  const list = Array.isArray(p) ? p : p?.rows;
+  if (!Array.isArray(list) || !list.length) throw new Error("That JSON has no rows. Run canslim_screener.py again.");
+  const seen = new Set(), rows = [];
+  for (const r of list) {
+    const name = String(r.name || "").trim(); if (!name) continue;
+    const id = String(r.nse || r.bse || name).toUpperCase(); if (seen.has(id)) continue; seen.add(id);
+    rows.push({ id, name, nse: r.nse || null, bse: r.bse || null, industry: r.industry || null, instrument_key: r.instrument_key || null,
+      price: num(r.price), pe: num(r.pe), mcap: num(r.mcap), roe: num(r.roe), roce: num(r.roce), qp: num(r.qp), qs: num(r.qs),
+      news: Array.isArray(r.news) ? r.news.slice(0, 8) : null,
+      promoter: num(r.promoter), prom_chg: num(r.prom_chg), pledge: num(r.pledge), fii_chg: num(r.fii_chg), dii_chg: num(r.dii_chg) });
+  }
+  return { rows, generated: p?.generated_at || null };
+}
+function ghRequest(url, token) {
+  // A github.com "blob" link is turned into its raw form. Private repos go through the contents API with the token.
+  let u = url.trim();
+  const blob = u.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/);
+  if (blob) u = token ? `https://api.github.com/repos/${blob[1]}/${blob[2]}/contents/${blob[4]}?ref=${blob[3]}` : `https://raw.githubusercontent.com/${blob[1]}/${blob[2]}/${blob[3]}/${blob[4]}`;
+  const raw = u.match(/^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
+  if (raw && token) u = `https://api.github.com/repos/${raw[1]}/${raw[2]}/contents/${raw[4]}?ref=${raw[3]}`;
+  const headers = token && u.startsWith("https://api.github.com/") ? { Authorization: "Bearer " + token, Accept: "application/vnd.github.raw+json" } : {};
+  return { u, headers };
+}
+async function readStatus(jsonUrl, token) {
+  // screen_status.json sits next to canslim_screen.json and says why the last run failed.
+  try {
+    const { u, headers } = ghRequest(jsonUrl.replace(/canslim_screen\.json/i, "screen_status.json"), token);
+    if (u === jsonUrl && !/screen_status/.test(u)) return null;
+    const res = await fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), { headers, cache: "no-store" });
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+async function loadFromGitHub() {
+  const url = $("#ghUrl").value.trim(), token = $("#ghToken").value.trim();
+  if (!url) return showMsg($("#importMsg"), "Enter the GitHub link to canslim_screen.json.", true);
+  saveGh();
+  const btn = $("#ghLoad"); btn.disabled = true; btn.textContent = "Loading…";
+  try {
+    const { u, headers } = ghRequest(url, token);
+    const t = new AbortController(); const timer = setTimeout(() => t.abort(), 30000);
+    const res = await fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), { headers, signal: t.signal, cache: "no-store" }).finally(() => clearTimeout(timer));
+    if (res.status === 404) {
+      const st = await readStatus(url, token);
+      if (st && st.ok === false) throw new Error("The screen run failed: " + st.message);
+      throw new Error("No screen results yet. Tap Run screen now, or run the CAN SLIM screen workflow on GitHub, then load again.");
+    }
+    if (res.status === 401 || res.status === 403) throw new Error("GitHub refused the token. It needs Contents: read on that repo.");
+    if (!res.ok) throw new Error("GitHub returned " + res.status + ".");
+    const { rows, generated } = rowsFromJson(await res.json());
+    setRows(rows);
+    const when = generated ? new Date(generated).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "an earlier run";
+    const st = await readStatus(url, token);
+    if (st && st.ok === false && (!generated || Date.parse(st.at) > Date.parse(generated)))
+      showMsg($("#importMsg"), `The latest screen run failed: ${st.message} Showing the previous list from ${when}.`, true);
+    else if (generated) showMsg($("#importMsg"), `Loaded ${rows.length} stocks from the screen run at ${when}.`);
+  } catch (e) {
+    showMsg($("#importMsg"), e.name === "AbortError" ? "GitHub did not answer within 30 seconds." : (e.message || "Could not load from GitHub."), true);
+  } finally { btn.disabled = false; btn.textContent = "Load from GitHub"; }
+}
+
+
+/* ---------- Run the screener on GitHub Actions ---------- */
+const WORKFLOW = "canslim-screen.yml", SCREEN_PATH = "canslim/canslim_screen.json";
+let ghBusy = false;
+function saveGh() { try { localStorage.setItem(GH_STORE, JSON.stringify({ url: $("#ghUrl").value.trim(), repo: $("#ghRepo").value.trim(), token: $("#ghRemember").checked ? $("#ghToken").value.trim() : "" })); } catch {} }
+function guessRepo() {
+  const m = $("#ghUrl").value.match(/(?:github\.com|raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)/);
+  if (m) return m[1] + "/" + m[2];
+  if (/\.github\.io$/i.test(location.hostname)) { const seg = location.pathname.split("/")[1]; if (seg && !/\.html?$/i.test(seg)) return location.hostname.split(".")[0] + "/" + seg; }
+  return "";
+}
+async function ghApi(path, token, opts = {}) {
+  const t = new AbortController(); const timer = setTimeout(() => t.abort(), 30000);
+  try {
+    return await fetch("https://api.github.com" + path, { ...opts, signal: t.signal, cache: "no-store",
+      headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", ...(opts.headers || {}) } });
+  } finally { clearTimeout(timer); }
+}
+function ghStatus(text, err, link) {
+  const el = $("#importMsg"); el.className = "msg" + (err ? " err" : ""); el.hidden = false; el.textContent = text;
+  if (link) { const a = document.createElement("a"); a.href = link; a.target = "_blank"; a.rel = "noopener"; a.textContent = " Open the run log ↗"; a.style.color = "inherit"; el.append(a); }
+}
+async function runScreenNow() {
+  if (ghBusy || running || upRunning) return;
+  const repo = ($("#ghRepo").value.trim() || guessRepo()).replace(/^https:\/\/github\.com\//, "").replace(/\/$/, "");
+  const token = $("#ghToken").value.trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { ghStatus("Enter the repo as owner/name, e.g. donaldrasquinha-lab/canslim.", true); $("#ghRepo").focus(); return; }
+  if (!token) { ghStatus("Run screen now needs a GitHub token with Actions: read and write and Contents: read on this repo.", true); $("#ghToken").focus(); return; }
+  $("#ghRepo").value = repo; saveGh();
+  ghBusy = true; const btn = $("#ghRun"); btn.disabled = true; btn.textContent = "Running…";
+  try {
+    const started = Date.now();
+    let res = await ghApi(`/repos/${repo}/actions/workflows/${WORKFLOW}/dispatches`, token, { method: "POST", body: JSON.stringify({ ref: "main" }) });
+    if (res.status === 401) throw new Error("GitHub rejected the token. Check it hasn't expired.");
+    if (res.status === 403) throw new Error("The token can't start workflows. Give it Actions: read and write on this repo.");
+    if (res.status === 404) throw new Error(`GitHub can't find .github/workflows/${WORKFLOW} in ${repo}, or the token has no access to that repo.`);
+    if (res.status === 422) throw new Error("The workflow can't be started by a button. Make sure it contains the workflow_dispatch line.");
+    if (!res.ok) throw new Error("GitHub returned " + res.status + " when starting the run.");
+    ghStatus("Screen started on GitHub. Waiting for it to begin…");
+    let run = null;
+    for (let i = 0; i < 100; i++) {           // up to ~10 minutes
+      await new Promise(r => setTimeout(r, 6000));
+      res = await ghApi(`/repos/${repo}/actions/workflows/${WORKFLOW}/runs?event=workflow_dispatch&per_page=5`, token);
+      if (!res.ok) continue;
+      const runs = (await res.json()).workflow_runs || [];
+      run = runs.find(r => Date.parse(r.created_at) >= started - 90000) || run;
+      if (!run) continue;
+      const secs = Math.round((Date.now() - started) / 1000);
+      if (run.status !== "completed") { ghStatus(`Screen ${run.status === "queued" ? "queued" : "running"} on GitHub… ${secs}s`, false, run.html_url); continue; }
+      if (run.conclusion !== "success") {
+        let why = `The screen run ended with "${run.conclusion}".`;
+        try {
+          const sr = await ghApi(`/repos/${repo}/contents/canslim/screen_status.json?ref=main`, token, { headers: { Accept: "application/vnd.github.raw+json" } });
+          if (sr.ok) { const st = await sr.json(); if (st.ok === false && Date.parse(st.at) >= started - 120000) why = st.message; }
+        } catch {}
+        throw Object.assign(new Error(why), { link: run.html_url });
+      }
+      break;
+    }
+    if (!run || run.status !== "completed") throw Object.assign(new Error("The run is taking longer than 10 minutes. Check it on GitHub, then tap Load last screen."), { link: run?.html_url });
+    ghStatus("Screen finished. Loading the new list…");
+    res = await ghApi(`/repos/${repo}/contents/${SCREEN_PATH}?ref=main`, token, { headers: { Accept: "application/vnd.github.raw+json" } });
+    if (!res.ok) throw new Error(`The run finished but ${SCREEN_PATH} could not be read (${res.status}).`);
+    const { rows, generated } = rowsFromJson(await res.json());
+    setRows(rows);
+    ghStatus(`Loaded ${rows.length} stocks from the screen run at ${new Date(generated || Date.now()).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}.`);
+  } catch (e) {
+    ghStatus(e.name === "AbortError" ? "GitHub did not answer within 30 seconds." : (e.message || "Run screen now failed."), true, e.link);
+  } finally { ghBusy = false; btn.disabled = false; btn.textContent = "Run screen now"; }
+}
+
+/* ---------- Upstox: N, L, S price checks ---------- */
+const UPX = "https://api.upstox.com", INDEX_KEY = "NSE_INDEX|Nifty 500";
+const UP_TOKEN = "canslim-desk-upstox", UP_SET = "canslim-desk-upstox-set";
+const IST_MS = 5.5 * 3600e3;
+const istDate = (offsetDays = 0) => new Date(Date.now() + IST_MS + offsetDays * 864e5).toISOString().slice(0, 10);
+// Upstox tokens expire around 3:30 AM IST, so a cached token belongs to the "trading day" that starts then.
+const tradingDay = () => new Date(Date.now() + IST_MS - 3.5 * 3600e3).toISOString().slice(0, 10);
+const keyPath = k => encodeURIComponent(k).replace(/%7C/gi, "|"); // pipe stays literal for Upstox
+let instMap = null, lastReq = 0, upCtl = null, upRunning = false;
+
+function upToken() { return $("#upToken").value.trim(); }
+function saveUpToken() { try { const t = upToken(); if (t) localStorage.setItem(UP_TOKEN, JSON.stringify({ token: t, day: tradingDay() })); else localStorage.removeItem(UP_TOKEN); } catch {} }
+function loadUpToken() { try { const s = JSON.parse(localStorage.getItem(UP_TOKEN) || "null"); if (s && s.day === tradingDay()) $("#upToken").value = s.token; else localStorage.removeItem(UP_TOKEN); } catch {} }
+
+async function upGet(path, signal) {
+  for (let attempt = 0; ; attempt++) {
+    const wait = Math.max(0, lastReq + 220 - Date.now()); lastReq = Date.now() + wait; // ~4.5 req/s
+    if (wait) await sleep(wait, signal);
+    const t = new AbortController(); const timer = setTimeout(() => t.abort(), 20000);
+    const onAbort = () => t.abort(); signal.addEventListener("abort", onAbort, { once: true });
+    let res;
+    try {
+      res = await fetch(UPX + path, { headers: { Accept: "application/json", Authorization: "Bearer " + upToken() }, signal: t.signal });
+    } catch (e) {
+      if (signal.aborted) throw { code: "cancelled" };
+      if (attempt < 2) { await sleep(1500 * 2 ** attempt, signal); continue; }
+      throw fail("up_network", "Could not reach api.upstox.com.");
+    } finally { clearTimeout(timer); signal.removeEventListener("abort", onAbort); }
+    if (res.ok) return res.json();
+    if (res.status === 401) throw fail("up_auth", "Upstox rejected the access token. Generate today's token and paste it again.");
+    if ((res.status === 429 || res.status >= 500) && attempt < 4) { await sleep(1000 * 2 ** attempt, signal); continue; }
+    const j = await res.json().catch(() => ({}));
+    throw fail("up_api", j?.errors?.[0]?.message || "Upstox returned " + res.status + ".");
+  }
+}
+async function dailyCandles(key, signal) {
+  const j = await upGet(`/v3/historical-candle/${keyPath(key)}/days/1/${istDate(0)}/${istDate(-400)}`, signal);
+  return (j?.data?.candles || []).map(c => ({ t: c[0], o: +c[1], h: +c[2], l: +c[3], c: +c[4], v: +c[5] }))
+    .filter(c => isFinite(c.c)).sort((a, b) => a.t < b.t ? -1 : 1);
+}
+
+async function loadInstMap() {
+  if (instMap) return instMap;
+  const url = $("#instUrl").value.trim(); if (!url) return null;
+  const { u, headers } = ghRequest(url, $("#ghToken").value.trim());
+  const res = await fetch(u, { headers }); if (!res.ok) throw fail("inst", "Could not load the instruments file (" + res.status + ").");
+  const data = await res.json(); const m = {};
+  const add = (sym, key) => { if (sym && key && !m[String(sym).toUpperCase()]) m[String(sym).toUpperCase()] = key; };
+  if (Array.isArray(data)) for (const it of data) {
+    const seg = it.segment || it.exchange || "", key = it.instrument_key || it.instrumentKey;
+    if (seg && !/NSE_EQ|BSE_EQ|^NSE$|^BSE$/.test(seg)) continue;
+    add(it.trading_symbol || it.tradingsymbol || it.symbol, key); if (/BSE/.test(seg)) add(it.exchange_token, key);
+  } else for (const [k, v] of Object.entries(data)) add(k, typeof v === "string" ? v : v?.instrument_key);
+  return instMap = m;
+}
+function keyFor(r) { return r.instrument_key || (instMap && (instMap[(r.nse || "").toUpperCase()] || instMap[String(r.bse || "")])) || null; }
+
+const sma = (a, n) => a.length >= n ? a.slice(-n).reduce((s, x) => s + x, 0) / n : null;
+function wReturn(cs) {
+  // IBD-style weighting: latest quarter counts double.
+  const last = cs.at(-1).c, W = [[63, .4], [126, .2], [189, .2], [252, .2]];
+  let s = 0, w = 0;
+  for (const [n, wt] of W) if (cs.length > n) { s += (last / cs.at(-1 - n).c - 1) * wt; w += wt; }
+  return w ? s / w : null;
+}
+function techCalc(cs, idxRet) {
+  if (cs.length < 60) return { error: "Under 60 days of price history" };
+  const closes = cs.map(c => c.c), last = closes.at(-1), yr = cs.slice(-252);
+  const hi = Math.max(...yr.map(c => c.h)), fromHigh = (last / hi - 1) * 100;
+  const wr = wReturn(cs), rsDiff = wr != null && idxRet != null ? (wr - idxRet) * 100 : null;
+  let up = 0, dn = 0;
+  for (let i = Math.max(1, cs.length - 50); i < cs.length; i++) { if (cs[i].c > cs[i - 1].c) up += cs[i].v; else if (cs[i].c < cs[i - 1].c) dn += cs[i].v; }
+  const ud = dn ? up / dn : null;
+  const vAvg = sma(cs.slice(-51, -1).map(c => c.v), 50), volX = vAvg ? cs.at(-1).v / vAvg : null;
+  // Volume build-up: 10-day average vs 50-day average, plus accumulation / distribution days
+  // (up or down closes on above-average volume) over the last 20 sessions.
+  const v10 = sma(cs.slice(-10).map(c => c.v), 10), build = vAvg && v10 ? v10 / vAvg : null;
+  let accum = 0, dist = 0;
+  if (vAvg) for (let i = Math.max(1, cs.length - 20); i < cs.length; i++) {
+    if (cs[i].v > vAvg && cs[i].c > cs[i - 1].c) accum++; else if (cs[i].v > vAvg && cs[i].c < cs[i - 1].c) dist++;
+  }
+  const s50 = sma(closes, 50), s200 = sma(closes, 200);
+  const pass = { N: fromHigh >= -15, L: rsDiff != null && rsDiff >= 10, S: ud != null && ud >= 1.1 };
+  const parts = [lin(fromHigh, -25, 0), rsDiff != null ? lin(rsDiff, -10, 40) : null, ud != null ? lin(ud, 0.8, 1.6) : null,
+    s50 ? (last > s50 ? 100 : 0) : null, s200 ? (last > s200 ? 100 : 0) : null,
+    build != null ? lin(build, 0.8, 1.6) * 0.5 + lin(accum - dist, -4, 6) * 0.5 : null].filter(x => x != null);
+  return { last, hi, fromHigh, rsDiff, ud, volX, build, accum, dist, above50: s50 ? last > s50 : null, above200: s200 ? last > s200 : null,
+    pass, score: Math.round(parts.reduce((a, b) => a + b, 0) / parts.length), at: new Date().toISOString() };
+}
+const techPass = t => !!(t && !t.error && t.pass.N && t.pass.L);
+
+async function runPriceChecks() {
+  if (upRunning || running) return;
+  if (state.example) return showMsg($("#upMsg"), "Load your screen results in step 2 first.", true);
+  if (!upToken()) { showMsg($("#upMsg"), "Paste today's Upstox access token first.", true); $("#upToken").focus(); return; }
+  saveUpToken();
+  upRunning = true; upCtl = new AbortController(); setRunning(true); showMsg($("#upMsg"), "");
+  const signal = upCtl.signal, rows = state.rows, total = rows.length;
+  const prog = (d, txt) => { $("#upProgWrap").hidden = false; $("#upBar").style.width = (d / total * 100) + "%"; $("#upText").textContent = txt; };
+  let done = 0, noKey = 0, errs = 0;
+  try {
+    if (rows.some(r => !r.instrument_key) && $("#instUrl").value.trim()) { prog(0, "Loading instruments file…"); await loadInstMap(); }
+    prog(0, "Fetching Nifty 500 for relative strength…");
+    const idxRet = wReturn(await dailyCandles(INDEX_KEY, signal));
+    for (const r of rows) {
+      if (signal.aborted) break;
+      const key = keyFor(r);
+      if (!key) { state.tech[r.id] = { error: "No Upstox instrument key" }; noKey++; }
+      else {
+        prog(done, `${done} of ${total} checked · ${r.name}`);
+        try { state.tech[r.id] = techCalc(await dailyCandles(key, signal), idxRet); }
+        catch (e) {
+          if (e?.code === "cancelled") break;
+          if (e?.code === "up_auth" || e?.code === "up_network") throw e;
+          state.tech[r.id] = { error: e.message || "Price data failed" }; errs++;
+        }
+      }
+      done++; if (done % 5 === 0) { save(); render(); }
+    }
+    save(); render();
+    const passed = rows.filter(r => techPass(state.tech[r.id])).length;
+    prog(done, signal.aborted ? `Stopped at ${done} of ${total}.` : `${done} of ${total} checked.`);
+    showMsg($("#upMsg"), `${passed} of ${total} pass N and L (near highs, beating Nifty 500).` + (noKey ? ` ${noKey} had no Upstox key.` : "") + (errs ? ` ${errs} failed to load.` : ""));
+  } catch (e) {
+    if (e?.code !== "cancelled") showMsg($("#upMsg"), e.message || "Price checks failed.", true);
+    save(); render();
+  } finally { upRunning = false; upCtl = null; setRunning(false); }
+}
+
+$("#ghLoad").onclick = loadFromGitHub;
+$("#ghRun").onclick = runScreenNow;
+$("#ghRepo").addEventListener("change", () => { try { const g = JSON.parse(localStorage.getItem(GH_STORE) || "{}"); g.repo = $("#ghRepo").value.trim(); localStorage.setItem(GH_STORE, JSON.stringify(g)); } catch {} });
+$("#runUp").onclick = runPriceChecks;
+$("#stopUp").onclick = () => upCtl?.abort();
+$("#upToken").addEventListener("change", saveUpToken);
+$("#instUrl").addEventListener("change", () => { instMap = null; try { localStorage.setItem(UP_SET, JSON.stringify({ inst: $("#instUrl").value.trim() })); } catch {} });
+loadUpToken();
+try { const g = JSON.parse(localStorage.getItem(GH_STORE) || "{}"); if (g.url) $("#ghUrl").value = g.url; if (g.token) { $("#ghToken").value = g.token; $("#ghRemember").checked = true; } } catch {}
+// Opened from GitHub Pages: the screen file sits in the same repo, so fill the link in and load it straight away.
+const onPages = /\.github\.io$/i.test(location.hostname);
+if (onPages && !$("#ghUrl").value) $("#ghUrl").value = new URL("canslim/canslim_screen.json", location.href).href;
+try { const g = JSON.parse(localStorage.getItem(GH_STORE) || "{}"); if (g.repo) $("#ghRepo").value = g.repo; } catch {}
+if (!$("#ghRepo").value) $("#ghRepo").value = guessRepo();
+try { const u = JSON.parse(localStorage.getItem(UP_SET) || "{}"); if (u.inst) $("#instUrl").value = u.inst; } catch {}
+
+/* settings (standalone mode) */
+try { const k = localStorage.getItem(KEY_STORE); if (k) { $("#apiKey").value = k; $("#rememberKey").checked = true; } } catch {}
+try { const st = JSON.parse(localStorage.getItem(SET_STORE) || "{}"); if (st.model) $("#modelSel").value = st.model; if (st.live === false) $("#liveSearch").checked = false; } catch {}
+function saveSettings() {
+  try {
+    localStorage.setItem(SET_STORE, JSON.stringify({ model: $("#modelSel").value, live: $("#liveSearch").checked }));
+    if ($("#rememberKey").checked && $("#apiKey").value.trim()) localStorage.setItem(KEY_STORE, $("#apiKey").value.trim()); else localStorage.removeItem(KEY_STORE);
+  } catch {}
+}
+for (const id of ["#apiKey", "#modelSel", "#liveSearch", "#rememberKey"]) $(id).addEventListener("change", saveSettings);
+
+load(); render();
+$("#dlCsv").hidden = false;
+if (onPages) loadFromGitHub();
+(async () => {
+  if (!window.claude?.use) return;             /* standalone file: API key mode */
+  const [s, d] = await Promise.all([claude.use("sample"), claude.use("downloads")]);
+  if (s) { sample = s; $("#apiSettings").hidden = true; }  /* inside Claude: research runs on your Claude account */
+  downloads = d; $("#dlCsv").hidden = !d;
+})();
+</script>
+</body>
+</html>
