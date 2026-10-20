@@ -114,6 +114,10 @@ footer{font-size:12.5px;color:var(--muted);max-width:70ch}
 .field input,.field select{font:inherit;font-size:14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:38px;width:100%}
 .check{display:flex;gap:8px;align-items:center;color:var(--fg)}
 .check input{width:18px;height:18px;accent-color:var(--accent)}
+.techrow{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lt{font-family:var(--f-mono);font-size:11.5px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-variant-numeric:tabular-nums}
+.lt.ok{border-color:var(--good);color:var(--good);background:var(--good-soft)}
+.lt.no{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
 .sources{margin-top:8px;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
 .sources a{color:var(--accent);overflow-wrap:anywhere}
 </style>
@@ -130,9 +134,9 @@ footer{font-size:12.5px;color:var(--muted);max-width:70ch}
     <div class="letters">
       <div class="letter q"><b>C</b><span>Current qtr earnings</span><i>Query</i></div>
       <div class="letter q"><b>A</b><span>Annual earnings</span><i>Query</i></div>
-      <div class="letter c"><b>N</b><span>New products, plans</span><i>Claude</i></div>
-      <div class="letter n"><b>S</b><span>Supply &amp; demand</span><i>Your chart</i></div>
-      <div class="letter n"><b>L</b><span>Leader or laggard</span><i>Your RS</i></div>
+      <div class="letter c"><b>N</b><span>New highs, new plans</span><i>Upstox · Claude</i></div>
+      <div class="letter c"><b>S</b><span>Supply &amp; demand</span><i>Upstox</i></div>
+      <div class="letter c"><b>L</b><span>Leader or laggard</span><i>Upstox</i></div>
       <div class="letter c"><b>I</b><span>Institutional sponsor</span><i>Claude</i></div>
       <div class="letter n"><b>M</b><span>Market direction</span><i>You</i></div>
     </div>
@@ -150,10 +154,18 @@ footer{font-size:12.5px;color:var(--muted);max-width:70ch}
 
   <section class="step" aria-labelledby="s2">
     <div class="step-head"><span class="step-num">2</span><h2 id="s2">Bring in the results</h2></div>
-    <label class="hint" for="pasteBox">Paste the copied screener table, or a CSV with a Name column</label>
+    <div class="settings">
+      <div class="field" style="grid-column:1/-1"><label for="ghUrl">GitHub link to canslim_screen.json (written by canslim_screener.py)</label><input id="ghUrl" type="url" placeholder="https://github.com/you/repo/blob/main/canslim/canslim_screen.json"></div>
+      <div class="field"><label for="ghToken">GitHub token (private repo only)</label><input id="ghToken" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+      <div class="field" style="justify-content:flex-end;gap:8px">
+        <label class="check"><input id="ghRemember" type="checkbox"> Remember token on this device</label>
+        <button class="primary" id="ghLoad" type="button">Load from GitHub</button>
+      </div>
+    </div>
+    <label class="hint" for="pasteBox">Or paste the copied screener table, or a CSV with a Name column</label>
     <textarea id="pasteBox" placeholder="S.No.	Name	CMP Rs.	P/E	Mar Cap Rs.Cr.	…"></textarea>
     <div class="row">
-      <button class="primary" id="importPaste" type="button">Import pasted table</button>
+      <button id="importPaste" type="button">Import pasted table</button>
       <label class="btn file-label">Upload CSV / Excel<input id="fileInput" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"></label>
       <button id="clearAll" type="button">Clear list</button>
     </div>
@@ -161,8 +173,24 @@ footer{font-size:12.5px;color:var(--muted);max-width:70ch}
   </section>
 
   <section class="step" aria-labelledby="s3">
-    <div class="step-head"><span class="step-num">3</span><h2 id="s3">Research and shortlist</h2></div>
-    <p class="hint">Claude reviews each company's growth plans, capex, order book, guidance, institutional interest and recent news, then scores the outlook. The final score is 40% fundamentals from the screen and 60% outlook. With live web search on, Claude searches the last 90 days of news for each stock. You can also paste headlines or concall notes into any stock's notes.</p>
+    <div class="step-head"><span class="step-num">3</span><h2 id="s3">Price checks on Upstox</h2></div>
+    <p class="hint">A year of daily candles per stock tests the letters the earnings query can't. <b>N</b>: within 15% of the 52-week high. <b>L</b>: weighted 3, 6, 9 and 12-month return beats Nifty 500 by 10 points or more. <b>S</b>: up-day volume beats down-day volume by 1.1× over 50 sessions. A stock passes when it clears N and L.</p>
+    <div class="settings">
+      <div class="field"><label for="upToken">Upstox access token</label><input id="upToken" type="password" autocomplete="off" placeholder="Today's token"></div>
+      <div class="field"><label for="instUrl">Instruments JSON link (only for pasted lists)</label><input id="instUrl" type="url" placeholder="Your instruments.json on GitHub"></div>
+      <p class="hint" style="grid-column:1/-1">The token is kept on this device until 3:30 AM IST, when Upstox tokens expire, and is sent only to api.upstox.com. Lists from canslim_screener.py already carry instrument keys.</p>
+    </div>
+    <div class="row">
+      <button class="primary" id="runUp" type="button">Run price checks</button>
+      <button id="stopUp" type="button" hidden>Stop</button>
+    </div>
+    <div id="upProgWrap" hidden><div class="bar"><div id="upBar"></div></div><p class="hint" id="upText"></p></div>
+    <div id="upMsg" class="msg" hidden></div>
+  </section>
+
+  <section class="step" aria-labelledby="s3b">
+    <div class="step-head"><span class="step-num">4</span><h2 id="s3b">Research and shortlist</h2></div>
+    <p class="hint">Claude reviews each company's growth plans, capex, order book, guidance, institutional interest and recent news, then scores the outlook. The final score weighs fundamentals 30%, price checks 30% and outlook 40%, using whichever parts have run. With live web search on, Claude searches the last 90 days of news for each stock. You can also paste headlines or concall notes into any stock's notes.</p>
     <div class="settings" id="apiSettings">
       <div class="field"><label for="apiKey">Anthropic API key</label><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
       <div class="field"><label for="modelSel">Model</label>
@@ -177,9 +205,10 @@ footer{font-size:12.5px;color:var(--muted);max-width:70ch}
       </div>
       <p class="hint" style="grid-column:1/-1">The key goes only from this browser to api.anthropic.com. Live search runs one request per stock, with up to 3 searches each ($10 per 1,000 searches plus tokens). With search off, stocks go in batches of 6 using Claude's own knowledge, which has a cutoff date.</p>
     </div>
+    <label class="check"><input id="onlyPassed" type="checkbox" checked> Only research stocks that pass the price checks</label>
     <div class="row">
-      <button class="primary" id="runAll" type="button">Research all stocks</button>
-      <button id="runPending" type="button">Research only new ones</button>
+      <button class="primary" id="runAll" type="button">Research stocks</button>
+      <button id="runPending" type="button">Research only unresearched</button>
       <button id="stopBtn" type="button" hidden>Stop</button>
     </div>
     <div id="progWrap" hidden>
@@ -197,12 +226,12 @@ footer{font-size:12.5px;color:var(--muted);max-width:70ch}
         <button id="dlCsv" type="button" hidden>Download CSV</button>
       </div>
     </div>
-    <div id="exampleNote" class="example" hidden>Example list. Import your screener results in step 2 to replace it.</div>
+    <div id="exampleNote" class="example" hidden>Example list. Load your screen results in step 2 to replace it.</div>
     <div class="summary" id="filters" role="group" aria-label="Filter by verdict"></div>
     <div class="list" id="list"></div>
   </section>
 
-  <footer>Research aid only, not investment advice. Claude can be wrong or out of date about a company; check filings, exchange announcements and the latest concall before acting. The screen covers C and A; leadership (L), supply (S) and market direction (M) still need your charts.</footer>
+  <footer>Research aid only, not investment advice. Claude can be wrong or out of date about a company; check filings, exchange announcements and the latest concall before acting. The query covers C and A, Upstox price checks cover N, L and S, and Claude covers the new-plans side of N and the I. Market direction (M) is still your call.</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -221,15 +250,15 @@ const STORE = "canslim-desk-v1";
 const $ = s => document.querySelector(s);
 const EXAMPLE_ROWS = ["Example Industries", "Sample Capital Goods", "Demo Pharma"].map((n, i) => ({ id: "ex" + i, name: n, example: true }));
 
-let state = { rows: EXAMPLE_ROWS, analysis: {}, notes: {}, filter: "all", example: true };
+let state = { rows: EXAMPLE_ROWS, analysis: {}, notes: {}, tech: {}, filter: "all", example: true };
 let sample = null, downloads = null, ctl = null, running = false;
 
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(STORE) || "null"); if (s && s.rows && s.rows.length) state = { ...state, ...s, example: false }; } catch (e) {}
+  try { const s = JSON.parse(localStorage.getItem(STORE) || "null"); if (s && s.rows && s.rows.length) state = { ...state, ...s, tech: s.tech || {}, example: false }; } catch (e) {}
 }
 function save() {
   if (state.example) return;
-  try { localStorage.setItem(STORE, JSON.stringify({ rows: state.rows, analysis: state.analysis, notes: state.notes })); } catch (e) {}
+  try { localStorage.setItem(STORE, JSON.stringify({ rows: state.rows, analysis: state.analysis, notes: state.notes, tech: state.tech })); } catch (e) {}
 }
 
 /* ---------- parsing ---------- */
@@ -277,9 +306,13 @@ function parseText(text) {
   return rowsFromMatrix(lines.map(l => splitLine(l, d)));
 }
 function setRows(rows) {
-  const keepA = {}, keepN = {};
-  if (!state.example) for (const r of rows) { if (state.analysis[r.id]) keepA[r.id] = state.analysis[r.id]; if (state.notes[r.id]) keepN[r.id] = state.notes[r.id]; }
-  state = { ...state, rows, analysis: keepA, notes: keepN, example: false, filter: "all" };
+  const keepA = {}, keepN = {}, keepT = {}, today = istDate(0);
+  if (!state.example) for (const r of rows) {
+    if (state.analysis[r.id]) keepA[r.id] = state.analysis[r.id];
+    if (state.notes[r.id]) keepN[r.id] = state.notes[r.id];
+    if (state.tech[r.id] && !state.tech[r.id].error && (state.tech[r.id].at || "").slice(0, 10) === today) keepT[r.id] = state.tech[r.id]; // price checks go stale daily
+  }
+  state = { ...state, rows, analysis: keepA, notes: keepN, tech: keepT, example: false, filter: "all" };
   save(); render();
   const kept = Object.keys(keepA).length;
   showMsg($("#importMsg"), `Imported ${rows.length} stocks.` + (kept ? ` Kept earlier research for ${kept}.` : ""));
@@ -299,9 +332,11 @@ function fundScore(r) {
   return parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
 }
 function finalScore(r) {
-  const a = state.analysis[r.id]; if (!a) return null;
-  const f = fundScore(r), o = clamp(Number(a.outlook_score) || 0, 0, 100);
-  return f == null ? Math.round(o) : Math.round(0.4 * f + 0.6 * o);
+  const a = state.analysis[r.id], t = state.tech[r.id], f = fundScore(r);
+  const parts = [[f, .3], [t && !t.error ? t.score : null, .3], [a ? clamp(Number(a.outlook_score) || 0, 0, 100) : null, .4]].filter(p => p[0] != null);
+  if (!a && !(t && !t.error)) return null;
+  const w = parts.reduce((s, p) => s + p[1], 0);
+  return Math.round(parts.reduce((s, p) => s + p[0] * p[1], 0) / w);
 }
 
 /* ---------- Claude ---------- */
@@ -330,15 +365,15 @@ ${lines}`;
 const ERR = {
   not_granted: "Claude access was not allowed for this page. Reload and choose Allow to run research.",
   sampling_disabled: "Claude is not available on this account.",
-  rate_limited: "Usage limit reached for now. Wait a few minutes, then use Research only new ones to continue.",
+  rate_limited: "Usage limit reached for now. Wait a few minutes, then use Research only unresearched to continue.",
   session_expired: "Your Claude session expired. Sign in again and reload.",
-  invalid_json: "Claude's reply could not be read for one batch. Run Research only new ones to retry it.",
+  invalid_json: "Claude's reply could not be read for one batch. Run Research only unresearched to retry it.",
   refused: "Claude declined one batch. Try fewer stocks or edit the notes.",
   no_key: "Enter your Anthropic API key in step 3 first.",
   auth: "The API key was rejected. Check it at console.anthropic.com and paste it again.",
   credit: "The API account has no credit left. Add credit at console.anthropic.com.",
-  network: "Could not reach api.anthropic.com. Check your connection, then use Research only new ones.",
-  api_rate: "The API is rate-limiting this key. Wait a minute, then use Research only new ones.",
+  network: "Could not reach api.anthropic.com. Check your connection, then use Research only unresearched.",
+  api_rate: "The API is rate-limiting this key. Wait a minute, then use Research only unresearched.",
 };
 const errText = e => ERR[e?.code] || (e?.message ? "Research failed: " + e.message : "The research request failed. Try again in a moment.");
 const STOP_CODES = new Set(["not_granted", "sampling_disabled", "rate_limited", "session_expired", "not_declared", "capability_disabled", "capability_removed", "no_key", "auth", "credit", "network", "api_rate"]);
@@ -456,14 +491,15 @@ async function research(rows, { fresh = false } = {}) {
     await Promise.all(Array.from({ length: Math.min(parallel, batches.length) }, worker));
     if (signal.aborted) progress(done, total, "Stopped.");
     else if (!failed) showMsg($("#runMsg"), `Research done for ${total} stock${total > 1 ? "s" : ""}.`);
-    else if (!stopErr) showMsg($("#runMsg"), `${failed} stock${failed > 1 ? "s" : ""} could not be researched. Use Research only new ones to retry.`, true);
+    else if (!stopErr) showMsg($("#runMsg"), `${failed} stock${failed > 1 ? "s" : ""} could not be researched. Use Research only unresearched to retry.`, true);
   } finally { running = false; ctl = null; setRunning(false); }
 }
 function progress(d, t, text) { $("#progWrap").hidden = false; $("#progBar").style.width = (t ? d / t * 100 : 0) + "%"; $("#progText").textContent = text; }
 function setRunning(on) {
-  $("#stopBtn").hidden = !on;
-  for (const id of ["#runAll", "#runPending", "#importPaste", "#clearAll"]) $(id).disabled = on;
-  document.querySelectorAll(".reanalyse").forEach(b => b.disabled = on);
+  const busy = on || upRunning || running;
+  for (const id of ["#runAll", "#runPending", "#importPaste", "#clearAll", "#ghLoad", "#runUp"]) $(id).disabled = busy;
+  $("#stopUp").hidden = !upRunning; $("#stopBtn").hidden = !running;
+  document.querySelectorAll(".reanalyse").forEach(b => b.disabled = busy);
 }
 
 /* ---------- render ---------- */
@@ -479,23 +515,32 @@ function sortedRows() {
 function render() {
   $("#exampleNote").hidden = !state.example;
   const rows = sortedRows();
-  const counts = { all: rows.length, Shortlist: 0, Watch: 0, Avoid: 0, pending: 0 };
-  rows.forEach(r => { const v = state.analysis[r.id]?.verdict; counts[counts[v] != null ? v : "pending"]++; });
-  const F = [["all", "All"], ["Shortlist", "Shortlist"], ["Watch", "Watch"], ["Avoid", "Avoid"], ["pending", "Not researched"]];
+  const counts = { all: rows.length, passed: 0, Shortlist: 0, Watch: 0, Avoid: 0, pending: 0 };
+  rows.forEach(r => { const v = state.analysis[r.id]?.verdict; counts[counts[v] != null && v !== "passed" ? v : "pending"]++; if (techPass(state.tech[r.id])) counts.passed++; });
+  const F = [["all", "All"], ["passed", "Price checks passed"], ["Shortlist", "Shortlist"], ["Watch", "Watch"], ["Avoid", "Avoid"], ["pending", "Not researched"]];
   $("#filters").innerHTML = F.map(([k, l]) => `<button type="button" class="chip-filter" data-f="${k}" aria-pressed="${state.filter === k}">${l} <span class="ct">${counts[k]}</span></button>`).join("");
-  const shown = rows.filter(r => { const v = state.analysis[r.id]?.verdict; return state.filter === "all" || (state.filter === "pending" ? !state.analysis[r.id] : v === state.filter); });
+  const shown = rows.filter(r => { const v = state.analysis[r.id]?.verdict; return state.filter === "all" || (state.filter === "passed" ? techPass(state.tech[r.id]) : state.filter === "pending" ? !state.analysis[r.id] : v === state.filter); });
   $("#list").innerHTML = shown.length ? shown.map(ticket).join("") : `<div class="empty">No stocks in this view.</div>`;
   $("#copyShort").disabled = !counts.Shortlist;
   setRunning(running);
 }
 function ticket(r) {
-  const a = state.analysis[r.id], fs = fundScore(r), sc = finalScore(r);
+  const a = state.analysis[r.id], fs = fundScore(r), sc = finalScore(r), tt = state.tech[r.id];
   const metrics = [
-    ["CMP", r.price != null ? "₹" + fmt(r.price) : null], ["P/E", r.pe != null ? fmt(r.pe) : null], ["MCap", r.mcap != null ? "₹" + fmt(r.mcap) + " Cr" : null],
+    ["CMP", r.price != null ? "₹" + fmt(r.price) : (tt && tt.last ? "₹" + fmt(tt.last) : null)], ["P/E", r.pe != null ? fmt(r.pe) : null], ["MCap", r.mcap != null ? "₹" + fmt(r.mcap) + " Cr" : null],
     ["ROE", r.roe != null ? fmt(r.roe, "%") : null], ["ROCE", r.roce != null ? fmt(r.roce, "%") : null],
     ["Qtr profit", r.qp != null ? fmt(r.qp, "%") : null], ["Qtr sales", r.qs != null ? fmt(r.qs, "%") : null], ["Fund. score", fs]
   ].filter(m => m[1] != null).map(([k, v]) => `<span>${k} <b>${esc(v)}</b></span>`).join("");
-  const sub = [r.nse, r.industry].filter(Boolean).map(esc).join(" · ");
+  const sub = [r.nse || r.bse, r.industry].filter(Boolean).map(esc).join(" · ");
+  const t = state.tech[r.id];
+  const sg = x => (x >= 0 ? "+" : "") + x.toFixed(1);
+  const techRow = !t ? "" : t.error ? `<div class="techrow"><span class="lt">Price checks: ${esc(t.error)}</span></div>` : `<div class="techrow">
+      <span class="lt ${t.pass.N ? "ok" : "no"}">N ${sg(t.fromHigh)}% from 52w high</span>
+      <span class="lt ${t.pass.L ? "ok" : "no"}">L ${t.rsDiff != null ? sg(t.rsDiff) + " pts vs N500" : "n/a"}</span>
+      <span class="lt ${t.pass.S ? "ok" : "no"}">S U/D vol ${t.ud != null ? t.ud.toFixed(2) + "×" : "n/a"}</span>
+      ${t.volX != null ? `<span class="lt">Vol ${t.volX.toFixed(1)}× 50d</span>` : ""}
+      ${t.above200 != null ? `<span class="lt ${t.above50 && t.above200 ? "ok" : ""}">${t.above50 ? "Above" : "Below"} 50 DMA · ${t.above200 ? "above" : "below"} 200 DMA</span>` : ""}
+      <span class="lt">Tech score <b>${t.score}</b></span></div>`;
   const links = r.example ? "" : `<div class="row" style="margin-top:10px"><a class="btn" href="${newsUrl(r)}" target="_blank" rel="noopener">Latest news ↗</a><a class="btn" href="${screenerUrl(r)}" target="_blank" rel="noopener">screener.in ↗</a></div>`;
   const notes = r.example ? "" : `<div class="notes-box"><label class="hint" for="n-${esc(r.id)}">Recent headlines, results or concall notes for this stock</label>
       <textarea id="n-${esc(r.id)}" data-notes="${esc(r.id)}" placeholder="Paste anything newer than Claude's cutoff: order wins, capex announcements, guidance, block deals…">${esc(state.notes[r.id] || "")}</textarea>
@@ -518,6 +563,7 @@ function ticket(r) {
       ${a ? `<div style="margin-top:6px"><span class="pill ${esc(a.verdict)}">${esc(a.verdict)}</span></div>` : ""}</div>
     <div class="t-score"><div class="big">${sc ?? "—"}</div><div class="lbl">score</div></div>
     ${metrics ? `<div class="metrics">${metrics}${a ? `<span>Outlook <b>${esc(a.outlook_score)}</b></span>` : ""}</div>` : ""}
+    ${techRow}
     ${body}
   </article>`;
 }
@@ -529,9 +575,9 @@ function shortlistText() {
 }
 function csvText() {
   const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const head = ["Name", "NSE", "Industry", "CMP", "PE", "MCap Cr", "ROE", "ROCE", "Qtr profit %", "Qtr sales %", "Fund score", "Outlook", "Final score", "Verdict", "Thesis", "Future plans", "Catalysts", "Risks", "News tone", "Confidence", "As of"];
-  const lines = sortedRows().map(r => { const a = state.analysis[r.id] || {}; const j = x => (x || []).join("; ");
-    return [r.name, r.nse, r.industry, r.price, r.pe, r.mcap, r.roe, r.roce, r.qp, r.qs, fundScore(r), a.outlook_score, finalScore(r), a.verdict, a.thesis, j(a.future_plans), j(a.catalysts), j(a.risks), a.news_tone, a.confidence, a.as_of].map(q).join(","); });
+  const head = ["Name", "NSE", "Industry", "CMP", "PE", "MCap Cr", "ROE", "ROCE", "Qtr profit %", "Qtr sales %", "Fund score", "% from 52w high", "RS vs N500 pts", "Up/down vol", "N", "L", "S", "Tech score", "Outlook", "Final score", "Verdict", "Thesis", "Future plans", "Catalysts", "Risks", "News tone", "Confidence", "As of"];
+  const lines = sortedRows().map(r => { const a = state.analysis[r.id] || {}, T = state.tech[r.id] || {}; const j = x => (x || []).join("; ");
+    return [r.name, r.nse, r.industry, r.price, r.pe, r.mcap, r.roe, r.roce, r.qp, r.qs, fundScore(r), T.fromHigh?.toFixed(1), T.rsDiff?.toFixed(1), T.ud?.toFixed(2), T.pass ? (T.pass.N ? "Y" : "N") : "", T.pass ? (T.pass.L ? "Y" : "N") : "", T.pass ? (T.pass.S ? "Y" : "N") : "", T.score, a.outlook_score, finalScore(r), a.verdict, a.thesis, j(a.future_plans), j(a.catalysts), j(a.risks), a.news_tone, a.confidence, a.as_of].map(q).join(","); });
   return [head.map(q).join(","), ...lines].join("\n");
 }
 
@@ -558,11 +604,17 @@ $("#clearAll").onclick = e => {
   if (!clearArmed) { clearArmed = true; e.target.textContent = "Tap again to clear"; setTimeout(() => { clearArmed = false; e.target.textContent = "Clear list"; }, 3000); return; }
   clearArmed = false; e.target.textContent = "Clear list";
   try { localStorage.removeItem(STORE); } catch {}
-  state = { rows: EXAMPLE_ROWS, analysis: {}, notes: {}, filter: "all", example: true }; render(); showMsg($("#importMsg"), "List cleared.");
+  state = { rows: EXAMPLE_ROWS, analysis: {}, notes: {}, tech: {}, filter: "all", example: true }; render(); showMsg($("#importMsg"), "List cleared.");
 };
-const realRows = () => state.example ? [] : sortedRows();
-$("#runAll").onclick = () => { if (state.example) return showMsg($("#runMsg"), "Import your screener results first.", true); research(realRows()); };
-$("#runPending").onclick = () => { if (state.example) return showMsg($("#runMsg"), "Import your screener results first.", true); const p = realRows().filter(r => !state.analysis[r.id]); if (!p.length) return showMsg($("#runMsg"), "Every stock already has research."); research(p); };
+const realRows = () => {
+  if (state.example) return [];
+  const all = sortedRows();
+  if (!$("#onlyPassed").checked) return all;
+  if (!all.some(r => state.tech[r.id])) { showMsg($("#runMsg"), "Run the price checks in step 3 first, or untick the price-check filter.", true); return null; }
+  return all.filter(r => techPass(state.tech[r.id]));
+};
+$("#runAll").onclick = () => { if (state.example) return showMsg($("#runMsg"), "Load your screen results first.", true); const rs = realRows(); if (rs === null) return; if (!rs.length) return showMsg($("#runMsg"), "No stocks pass the price checks, so there is nothing to research.", true); research(rs); };
+$("#runPending").onclick = () => { if (state.example) return showMsg($("#runMsg"), "Load your screen results first.", true); const rs = realRows(); if (rs === null) return; const p = rs.filter(r => !state.analysis[r.id]); if (!p.length) return showMsg($("#runMsg"), "Every stock already has research."); research(p); };
 $("#stopBtn").onclick = () => ctl?.abort();
 $("#filters").onclick = e => { const b = e.target.closest("[data-f]"); if (b) { state.filter = b.dataset.f; render(); } };
 $("#list").addEventListener("input", e => { const id = e.target.dataset.notes; if (id != null) { state.notes[id] = e.target.value; save(); } });
@@ -574,6 +626,183 @@ $("#dlCsv").onclick = async () => {
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: "text/csv" })); a.download = filename;
   document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 };
+
+/* ---------- GitHub loader ---------- */
+const GH_STORE = "canslim-desk-gh";
+function rowsFromJson(p) {
+  const list = Array.isArray(p) ? p : p?.rows;
+  if (!Array.isArray(list) || !list.length) throw new Error("That JSON has no rows. Run canslim_screener.py again.");
+  const seen = new Set(), rows = [];
+  for (const r of list) {
+    const name = String(r.name || "").trim(); if (!name) continue;
+    const id = String(r.nse || r.bse || name).toUpperCase(); if (seen.has(id)) continue; seen.add(id);
+    rows.push({ id, name, nse: r.nse || null, bse: r.bse || null, industry: r.industry || null, instrument_key: r.instrument_key || null,
+      price: num(r.price), pe: num(r.pe), mcap: num(r.mcap), roe: num(r.roe), roce: num(r.roce), qp: num(r.qp), qs: num(r.qs) });
+  }
+  return { rows, generated: p?.generated_at || null };
+}
+function ghRequest(url, token) {
+  // A github.com "blob" link is turned into its raw form. Private repos go through the contents API with the token.
+  let u = url.trim();
+  const blob = u.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/);
+  if (blob) u = token ? `https://api.github.com/repos/${blob[1]}/${blob[2]}/contents/${blob[4]}?ref=${blob[3]}` : `https://raw.githubusercontent.com/${blob[1]}/${blob[2]}/${blob[3]}/${blob[4]}`;
+  const raw = u.match(/^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
+  if (raw && token) u = `https://api.github.com/repos/${raw[1]}/${raw[2]}/contents/${raw[4]}?ref=${raw[3]}`;
+  const headers = token && u.startsWith("https://api.github.com/") ? { Authorization: "Bearer " + token, Accept: "application/vnd.github.raw+json" } : {};
+  return { u, headers };
+}
+async function loadFromGitHub() {
+  const url = $("#ghUrl").value.trim(), token = $("#ghToken").value.trim();
+  if (!url) return showMsg($("#importMsg"), "Enter the GitHub link to canslim_screen.json.", true);
+  try { localStorage.setItem(GH_STORE, JSON.stringify({ url, token: $("#ghRemember").checked ? token : "" })); } catch {}
+  const btn = $("#ghLoad"); btn.disabled = true; btn.textContent = "Loading…";
+  try {
+    const { u, headers } = ghRequest(url, token);
+    const t = new AbortController(); const timer = setTimeout(() => t.abort(), 30000);
+    const res = await fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), { headers, signal: t.signal, cache: "no-store" }).finally(() => clearTimeout(timer));
+    if (res.status === 404) throw new Error("File not found. For a private repo add a GitHub token.");
+    if (res.status === 401 || res.status === 403) throw new Error("GitHub refused the token. It needs Contents: read on that repo.");
+    if (!res.ok) throw new Error("GitHub returned " + res.status + ".");
+    const { rows, generated } = rowsFromJson(await res.json());
+    setRows(rows);
+    if (generated) showMsg($("#importMsg"), `Loaded ${rows.length} stocks from the screen run at ${new Date(generated).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}.`);
+  } catch (e) {
+    showMsg($("#importMsg"), e.name === "AbortError" ? "GitHub did not answer within 30 seconds." : (e.message || "Could not load from GitHub."), true);
+  } finally { btn.disabled = false; btn.textContent = "Load from GitHub"; }
+}
+
+/* ---------- Upstox: N, L, S price checks ---------- */
+const UPX = "https://api.upstox.com", INDEX_KEY = "NSE_INDEX|Nifty 500";
+const UP_TOKEN = "canslim-desk-upstox", UP_SET = "canslim-desk-upstox-set";
+const IST_MS = 5.5 * 3600e3;
+const istDate = (offsetDays = 0) => new Date(Date.now() + IST_MS + offsetDays * 864e5).toISOString().slice(0, 10);
+// Upstox tokens expire around 3:30 AM IST, so a cached token belongs to the "trading day" that starts then.
+const tradingDay = () => new Date(Date.now() + IST_MS - 3.5 * 3600e3).toISOString().slice(0, 10);
+const keyPath = k => encodeURIComponent(k).replace(/%7C/gi, "|"); // pipe stays literal for Upstox
+let instMap = null, lastReq = 0, upCtl = null, upRunning = false;
+
+function upToken() { return $("#upToken").value.trim(); }
+function saveUpToken() { try { const t = upToken(); if (t) localStorage.setItem(UP_TOKEN, JSON.stringify({ token: t, day: tradingDay() })); else localStorage.removeItem(UP_TOKEN); } catch {} }
+function loadUpToken() { try { const s = JSON.parse(localStorage.getItem(UP_TOKEN) || "null"); if (s && s.day === tradingDay()) $("#upToken").value = s.token; else localStorage.removeItem(UP_TOKEN); } catch {} }
+
+async function upGet(path, signal) {
+  for (let attempt = 0; ; attempt++) {
+    const wait = Math.max(0, lastReq + 220 - Date.now()); lastReq = Date.now() + wait; // ~4.5 req/s
+    if (wait) await sleep(wait, signal);
+    const t = new AbortController(); const timer = setTimeout(() => t.abort(), 20000);
+    const onAbort = () => t.abort(); signal.addEventListener("abort", onAbort, { once: true });
+    let res;
+    try {
+      res = await fetch(UPX + path, { headers: { Accept: "application/json", Authorization: "Bearer " + upToken() }, signal: t.signal });
+    } catch (e) {
+      if (signal.aborted) throw { code: "cancelled" };
+      if (attempt < 2) { await sleep(1500 * 2 ** attempt, signal); continue; }
+      throw fail("up_network", "Could not reach api.upstox.com.");
+    } finally { clearTimeout(timer); signal.removeEventListener("abort", onAbort); }
+    if (res.ok) return res.json();
+    if (res.status === 401) throw fail("up_auth", "Upstox rejected the access token. Generate today's token and paste it again.");
+    if ((res.status === 429 || res.status >= 500) && attempt < 4) { await sleep(1000 * 2 ** attempt, signal); continue; }
+    const j = await res.json().catch(() => ({}));
+    throw fail("up_api", j?.errors?.[0]?.message || "Upstox returned " + res.status + ".");
+  }
+}
+async function dailyCandles(key, signal) {
+  const j = await upGet(`/v3/historical-candle/${keyPath(key)}/days/1/${istDate(0)}/${istDate(-400)}`, signal);
+  return (j?.data?.candles || []).map(c => ({ t: c[0], o: +c[1], h: +c[2], l: +c[3], c: +c[4], v: +c[5] }))
+    .filter(c => isFinite(c.c)).sort((a, b) => a.t < b.t ? -1 : 1);
+}
+
+async function loadInstMap() {
+  if (instMap) return instMap;
+  const url = $("#instUrl").value.trim(); if (!url) return null;
+  const { u, headers } = ghRequest(url, $("#ghToken").value.trim());
+  const res = await fetch(u, { headers }); if (!res.ok) throw fail("inst", "Could not load the instruments file (" + res.status + ").");
+  const data = await res.json(); const m = {};
+  const add = (sym, key) => { if (sym && key && !m[String(sym).toUpperCase()]) m[String(sym).toUpperCase()] = key; };
+  if (Array.isArray(data)) for (const it of data) {
+    const seg = it.segment || it.exchange || "", key = it.instrument_key || it.instrumentKey;
+    if (seg && !/NSE_EQ|BSE_EQ|^NSE$|^BSE$/.test(seg)) continue;
+    add(it.trading_symbol || it.tradingsymbol || it.symbol, key); if (/BSE/.test(seg)) add(it.exchange_token, key);
+  } else for (const [k, v] of Object.entries(data)) add(k, typeof v === "string" ? v : v?.instrument_key);
+  return instMap = m;
+}
+function keyFor(r) { return r.instrument_key || (instMap && (instMap[(r.nse || "").toUpperCase()] || instMap[String(r.bse || "")])) || null; }
+
+const sma = (a, n) => a.length >= n ? a.slice(-n).reduce((s, x) => s + x, 0) / n : null;
+function wReturn(cs) {
+  // IBD-style weighting: latest quarter counts double.
+  const last = cs.at(-1).c, W = [[63, .4], [126, .2], [189, .2], [252, .2]];
+  let s = 0, w = 0;
+  for (const [n, wt] of W) if (cs.length > n) { s += (last / cs.at(-1 - n).c - 1) * wt; w += wt; }
+  return w ? s / w : null;
+}
+function techCalc(cs, idxRet) {
+  if (cs.length < 60) return { error: "Under 60 days of price history" };
+  const closes = cs.map(c => c.c), last = closes.at(-1), yr = cs.slice(-252);
+  const hi = Math.max(...yr.map(c => c.h)), fromHigh = (last / hi - 1) * 100;
+  const wr = wReturn(cs), rsDiff = wr != null && idxRet != null ? (wr - idxRet) * 100 : null;
+  let up = 0, dn = 0;
+  for (let i = Math.max(1, cs.length - 50); i < cs.length; i++) { if (cs[i].c > cs[i - 1].c) up += cs[i].v; else if (cs[i].c < cs[i - 1].c) dn += cs[i].v; }
+  const ud = dn ? up / dn : null;
+  const vAvg = sma(cs.slice(-51, -1).map(c => c.v), 50), volX = vAvg ? cs.at(-1).v / vAvg : null;
+  const s50 = sma(closes, 50), s200 = sma(closes, 200);
+  const pass = { N: fromHigh >= -15, L: rsDiff != null && rsDiff >= 10, S: ud != null && ud >= 1.1 };
+  const parts = [lin(fromHigh, -25, 0), rsDiff != null ? lin(rsDiff, -10, 40) : null, ud != null ? lin(ud, 0.8, 1.6) : null,
+    s50 ? (last > s50 ? 100 : 0) : null, s200 ? (last > s200 ? 100 : 0) : null].filter(x => x != null);
+  return { last, hi, fromHigh, rsDiff, ud, volX, above50: s50 ? last > s50 : null, above200: s200 ? last > s200 : null,
+    pass, score: Math.round(parts.reduce((a, b) => a + b, 0) / parts.length), at: new Date().toISOString() };
+}
+const techPass = t => !!(t && !t.error && t.pass.N && t.pass.L);
+
+async function runPriceChecks() {
+  if (upRunning || running) return;
+  if (state.example) return showMsg($("#upMsg"), "Load your screen results in step 2 first.", true);
+  if (!upToken()) { showMsg($("#upMsg"), "Paste today's Upstox access token first.", true); $("#upToken").focus(); return; }
+  saveUpToken();
+  upRunning = true; upCtl = new AbortController(); setRunning(true); showMsg($("#upMsg"), "");
+  const signal = upCtl.signal, rows = state.rows, total = rows.length;
+  const prog = (d, txt) => { $("#upProgWrap").hidden = false; $("#upBar").style.width = (d / total * 100) + "%"; $("#upText").textContent = txt; };
+  let done = 0, noKey = 0, errs = 0;
+  try {
+    if (rows.some(r => !r.instrument_key) && $("#instUrl").value.trim()) { prog(0, "Loading instruments file…"); await loadInstMap(); }
+    prog(0, "Fetching Nifty 500 for relative strength…");
+    const idxRet = wReturn(await dailyCandles(INDEX_KEY, signal));
+    for (const r of rows) {
+      if (signal.aborted) break;
+      const key = keyFor(r);
+      if (!key) { state.tech[r.id] = { error: "No Upstox instrument key" }; noKey++; }
+      else {
+        prog(done, `${done} of ${total} checked · ${r.name}`);
+        try { state.tech[r.id] = techCalc(await dailyCandles(key, signal), idxRet); }
+        catch (e) {
+          if (e?.code === "cancelled") break;
+          if (e?.code === "up_auth" || e?.code === "up_network") throw e;
+          state.tech[r.id] = { error: e.message || "Price data failed" }; errs++;
+        }
+      }
+      done++; if (done % 5 === 0) { save(); render(); }
+    }
+    save(); render();
+    const passed = rows.filter(r => techPass(state.tech[r.id])).length;
+    prog(done, signal.aborted ? `Stopped at ${done} of ${total}.` : `${done} of ${total} checked.`);
+    showMsg($("#upMsg"), `${passed} of ${total} pass N and L (near highs, beating Nifty 500).` + (noKey ? ` ${noKey} had no Upstox key.` : "") + (errs ? ` ${errs} failed to load.` : ""));
+  } catch (e) {
+    if (e?.code !== "cancelled") showMsg($("#upMsg"), e.message || "Price checks failed.", true);
+    save(); render();
+  } finally { upRunning = false; upCtl = null; setRunning(false); }
+}
+
+$("#ghLoad").onclick = loadFromGitHub;
+$("#runUp").onclick = runPriceChecks;
+$("#stopUp").onclick = () => upCtl?.abort();
+$("#upToken").addEventListener("change", saveUpToken);
+$("#instUrl").addEventListener("change", () => { instMap = null; try { localStorage.setItem(UP_SET, JSON.stringify({ inst: $("#instUrl").value.trim() })); } catch {} });
+loadUpToken();
+try { const g = JSON.parse(localStorage.getItem(GH_STORE) || "{}"); if (g.url) $("#ghUrl").value = g.url; if (g.token) { $("#ghToken").value = g.token; $("#ghRemember").checked = true; } } catch {}
+// Opened from GitHub Pages: the screen file sits in the same repo, so fill the link in and load it straight away.
+const onPages = /\.github\.io$/i.test(location.hostname);
+if (onPages && !$("#ghUrl").value) $("#ghUrl").value = new URL("canslim/canslim_screen.json", location.href).href;
+try { const u = JSON.parse(localStorage.getItem(UP_SET) || "{}"); if (u.inst) $("#instUrl").value = u.inst; } catch {}
 
 /* settings (standalone mode) */
 try { const k = localStorage.getItem(KEY_STORE); if (k) { $("#apiKey").value = k; $("#rememberKey").checked = true; } } catch {}
@@ -588,6 +817,7 @@ for (const id of ["#apiKey", "#modelSel", "#liveSearch", "#rememberKey"]) $(id).
 
 load(); render();
 $("#dlCsv").hidden = false;
+if (onPages) loadFromGitHub();
 (async () => {
   if (!window.claude?.use) return;             /* standalone file: API key mode */
   const [s, d] = await Promise.all([claude.use("sample"), claude.use("downloads")]);
