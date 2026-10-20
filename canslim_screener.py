@@ -50,16 +50,6 @@ QUERY = (
     "Market Capitalization > 500"
 )
 
-# Always-true conditions: screener shows a column for every field used in a query,
-# so these bring promoter, pledge and FII/DII data into the results for free.
-HOLDING_FIELDS = (
-    " AND Promoter holding >= 0"
-    " AND Change in promoter holding > -100"
-    " AND Pledged percentage >= 0"
-    " AND Change in FII holding > -100"
-    " AND Change in DII holding > -100"
-)
-
 UPSTOX_NSE = "https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz"
 UPSTOX_BSE = "https://assets.upstox.com/market-quote/instruments/exchange/BSE.json.gz"
 
@@ -415,11 +405,10 @@ def main():
         fail("no_secrets", "The SCREENER_USER / SCREENER_PASS secrets are missing. Add them in Settings → Secrets and variables → Actions.")
 
     s = login(user, pw)
-    try:
-        headers, rows = run_query(s, a.query + HOLDING_FIELDS)
-    except SystemExit:
-        log("screener.in did not accept the holding fields; running the plain query")
-        headers, rows = run_query(s, a.query)
+    headers, rows = run_query(s, a.query)
+    if not any(re.search(r"prom", h, re.I) for h in headers):
+        log("Tip: add Promoter holding, Change in promoter holding, Pledged percentage, "
+            "Change in FII holding and Change in DII holding via Edit Columns on screener.in to get holdings on the cards")
     if not rows:
         fail("no_results", "The query ran but returned no stocks today.")
     log(f"{len(rows)} stocks passed the screen")
@@ -463,4 +452,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-          
+            
