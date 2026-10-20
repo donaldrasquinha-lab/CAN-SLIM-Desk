@@ -1,15 +1,10 @@
-# CAN SLIM screen — runs canslim_screener.py on GitHub's servers and commits the result.
-# Put this file in your repo at:  .github/workflows/canslim-screen.yml
 name: CAN SLIM screen
 
 on:
-  schedule:
-    # 7:07 PM IST, Monday to Friday (GitHub cron is in UTC; runs can start a few minutes late)
-    - cron: "37 13 * * 1-5"
-  workflow_dispatch: {}   # adds a "Run workflow" button in the Actions tab
+  workflow_dispatch: {}
 
 permissions:
-  contents: write         # lets the job commit canslim/canslim_screen.json
+  contents: write
 
 concurrency:
   group: canslim-screen
@@ -38,10 +33,12 @@ jobs:
           python canslim_screener.py --out canslim/canslim_screen.json
 
       - name: Commit the result
+        if: always()
         run: |
           git config user.name  "canslim-bot"
           git config user.email "canslim-bot@users.noreply.github.com"
-          git add canslim/canslim_screen.json
+          [ -d canslim ] || exit 0
+          git add canslim/
           if git diff --cached --quiet; then
             echo "No change in the screen."
           else
